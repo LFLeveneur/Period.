@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /Users/louisleveneur/Documents/Dev/hetic/Period./.env*)",
+      "Bash(npx tsc:*)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(npm run:*)",
+      "Bash(pnpm install:*)",
+      "Bash(npm --version)",
+      "Bash(pnpm --version)",
+      "Bash(grep -E \"\\\\.tsx$\")",
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(echo \"Exit code: $?\")",
+      "Read(//Users/louisleveneur/.nvm/versions/node/**)",
+      "Read(//Users/louisleveneur/.volta/tools/image/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(fnm list:*)",
+      "Bash(~/.nvm/versions/node/v20.8.1/bin/node --version)",
+      "Bash(xargs grep:*)",
+      "Bash(python3)",
+      "Bash(grep -n \"showToast.*d'\" src/pages/**/*.tsx)",
+      "Bash(grep -E \"^[a-z_]+$|^Colonne|program_sessions\")",
+      "Read(//Users/louisleveneur/Documents/Dev/**)",
+      "Read(//Users/louisleveneur/Documents/**)",
+      "Bash(xargs ls:*)",
+      "Bash(xargs basename:*)",
+      "Bash(npx vite:*)"
+    ]
+  }
+}

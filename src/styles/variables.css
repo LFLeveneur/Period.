@@ -1,0 +1,106 @@
+:root {
+  /* Couleurs de base */
+  --color-bg: #f8fafc;
+  --color-bg-dark: #2F0057;
+  --color-surface: #FFFFFF;
+  --color-surface-dark: #3D0070;
+  --color-primary: #C584EE;
+  --color-primary-hover: #B570D8;
+  --color-primary-light: rgba(197, 132, 238, 0.12);
+  --color-text: #2F0057;
+  --color-text-light: #F9EDE1;
+  --color-text-muted: rgba(47, 0, 87, 0.5);
+  --color-text-muted-dark: rgba(249, 237, 225, 0.6);
+  --color-border: rgba(47, 0, 87, 0.08);
+  --color-border-dark: rgba(249, 237, 225, 0.1);
+
+  /* Phases du cycle */
+  --color-menstrual: #DE3031;
+  --color-menstrual-mid: rgba(222, 48, 49, 0.7);
+  --color-menstrual-light: rgba(222, 48, 49, 0.4);
+  --color-follicular: #EDDF40;
+  --color-follicular-mid: rgba(237, 223, 64, 0.7);
+  --color-follicular-light: rgba(237, 223, 64, 0.4);
+  --color-follicular-text: #8A7A00;
+  --color-ovulation: #303DCA;
+  --color-ovulation-mid: rgba(48, 61, 202, 0.7);
+  --color-ovulation-light: rgba(48, 61, 202, 0.4);
+  --color-luteal: #30CA8C;
+  --color-luteal-mid: rgba(48, 202, 140, 0.7);
+  --color-luteal-light: rgba(48, 202, 140, 0.4);
+  --color-luteal-late: #FF7700;
+  --color-luteal-late-mid: rgba(255, 119, 0, 0.7);
+  --color-luteal-late-light: rgba(255, 119, 0, 0.4);
+
+  /* Couleur d'énergie */
+  --color-energy: #FF7700;
+
+  /* États */
+  --color-error: #D32F2F;
+  --color-error-bg: #FFEBEE;
+  --color-success: #2E7D32;
+  --color-success-bg: #E8F5E9;
+  --color-warning: #E65100;
+  --color-warning-bg: #FFF3E0;
+
+  /* Typographie */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica Neue, Arial, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Espacements (grille 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Rayons */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  /* Ombres */
+  --shadow-sm: 0 1px 4px rgba(47, 0, 87, 0.06);
+  --shadow-md: 0 2px 12px rgba(47, 0, 87, 0.08);
+  --shadow-lg: 0 4px 24px rgba(47, 0, 87, 0.12);
+  --shadow-xl: 0 8px 40px rgba(47, 0, 87, 0.16);
+
+  /* Animations */
+  --duration-fast: 100ms;
+  --duration-normal: 200ms;
+  --duration-slow: 350ms;
+
+  /* Z-index — paliers définis, ne jamais utiliser de valeurs arbitraires */
+  --z-base: 0;
+  --z-nav: 50;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+
+  /* Breakpoints */
+  --bp-sm: 390px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+}
