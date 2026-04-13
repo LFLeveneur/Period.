@@ -92,12 +92,6 @@ export async function saveSession(
         },
       }));
 
-      // Calcul du volume max de cette séance pour cet exercice (pour victoires)
-      const maxVolume = completedSets.reduce((max, s) => {
-        const v = (s.weight ?? 0) * (s.reps ?? 0);
-        return v > max ? v : max;
-      }, 0);
-
       const { error: exHistError } = await supabase
         .from('exercise_history')
         .insert({
@@ -105,6 +99,7 @@ export async function saveSession(
           session_history_id: sessionHistoryId,
           exercise_catalog_id: state.exerciseIds[sessionExerciseId]?.catalogId ?? null,
           user_custom_exercise_id: state.exerciseIds[sessionExerciseId]?.customId ?? null,
+          set_details,
         });
 
       if (exHistError) {
@@ -389,18 +384,19 @@ export async function getSessionHistoryDetail(
     const exerciseName =
       (catalog?.['name'] as string) ?? (custom?.['name'] as string) ?? 'exercice supprimé';
 
-    const setDetails: SetDetails[] | null = null;
+    const rawSetDetails = ex['set_details'];
+    const setDetails: SetDetails[] | null = Array.isArray(rawSetDetails) ? (rawSetDetails as SetDetails[]) : null;
 
     // Calcul avg_rir
     let avgRir: number | null = null;
     if (setDetails && setDetails.length > 0) {
       const rirsWithValues = setDetails
-        .map(s => s.actual?.rir)
+        .map((s: SetDetails) => s.actual?.rir)
         .filter((r): r is number => r !== undefined && r !== null);
       if (rirsWithValues.length > 0) {
         avgRir =
           Math.round(
-            (rirsWithValues.reduce((sum, r) => sum + r, 0) / rirsWithValues.length) * 10
+            (rirsWithValues.reduce((sum: number, r: number) => sum + r, 0) / rirsWithValues.length) * 10
           ) / 10;
       }
     }
@@ -540,7 +536,7 @@ export async function getHistoryList(
 
   const items: SessionHistoryItem[] = (data ?? []).map((row: Record<string, unknown>) => {
     const sid = row['session_id'] as string | null;
-    const prog = sid ? (sessionProgramMap[sid] ?? { programId: null, programName: null }) : { programId: null, programName: null };
+    const prog = sid ? (sessionProgramMap[sid] ?? { sessionName: null, programId: null, programName: null }) : { sessionName: null, programId: null, programName: null };
     return {
       id: row['id'] as string,
       sessionName: prog.sessionName ?? 'Séance',
@@ -622,17 +618,18 @@ export async function getHistoryDetail(
     const exerciseName =
       (catalog?.['name'] as string) ?? (custom?.['name'] as string) ?? 'exercice supprimé';
 
-    const setDetails: SetDetails[] | null = null;
+    const rawSetDetails2 = ex['set_details'];
+    const setDetails: SetDetails[] | null = Array.isArray(rawSetDetails2) ? (rawSetDetails2 as SetDetails[]) : null;
     const isLegacy = false;
 
     // avg_rir
     let avgRir: number | null = null;
     if (!isLegacy && setDetails && setDetails.length > 0) {
       const rirs = setDetails
-        .map(s => s.actual?.rir)
+        .map((s: SetDetails) => s.actual?.rir)
         .filter((r): r is number => r !== undefined && r !== null);
       if (rirs.length > 0) {
-        avgRir = Math.round((rirs.reduce((sum, r) => sum + r, 0) / rirs.length) * 10) / 10;
+        avgRir = Math.round((rirs.reduce((sum: number, r: number) => sum + r, 0) / rirs.length) * 10) / 10;
       }
     }
 

@@ -1,5 +1,4 @@
 // Modal de choix entre importer ou créer un programme
-import type { ReactNode } from 'react';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 
 interface ProgramChoiceModalProps {

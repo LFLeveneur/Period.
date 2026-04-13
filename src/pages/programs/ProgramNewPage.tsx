@@ -61,8 +61,6 @@ interface ProgramDraft {
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const EXERCISE_CATEGORIES = ['Tous', 'Haut du corps', 'Bas du corps', 'Full Body', 'Cardio', 'Mobilité'] as const;
-
 const INPUT_TYPE_LABELS: Record<ExerciseInputType, string> = {
   weight_reps: 'Poids + Reps',
   bodyweight_reps: 'Poids du corps',

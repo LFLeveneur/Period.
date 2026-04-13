@@ -1,6 +1,6 @@
 // Page séance active (mode immersif) — cœur de la séance
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { useParams, useNavigate } from 'react-router';
 import { useActiveSession } from '@/contexts/ActiveSessionContext';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -336,7 +336,7 @@ export function SessionActivePage() {
               fontFamily: 'var(--font-family)',
               fontSize: 'var(--text-xs)',
               fontWeight: 600,
-              color: phaseConfig.textColor || 'var(--color-text)',
+              color: phaseConfig.cardTextColor || 'var(--color-text)',
               lineHeight: 1.4,
             }}
           >

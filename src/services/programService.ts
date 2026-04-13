@@ -6,6 +6,7 @@ import type {
   SessionExercise,
   AnyExercise,
   ExerciseInputType,
+  SetTarget,
 } from '@/types/workout';
 import { buildSetTargets } from '@/utils/setTargets';
 
@@ -583,7 +584,15 @@ export async function updateSessionExercise(
   }>
 ): Promise<{ error: string | null }> {
   // Si les paramètres de l'exercice changent, recalcule les set_targets
-  let dataToUpdate = { ...updates };
+  let dataToUpdate: Partial<{
+    sets: number;
+    reps: string;
+    weight: number | null;
+    input_type: ExerciseInputType;
+    rest_between_sets: number;
+    order_index: number;
+    set_targets: SetTarget[];
+  }> = { ...updates };
 
   if (
     updates.sets !== undefined ||

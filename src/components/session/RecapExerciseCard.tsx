@@ -1,12 +1,12 @@
 // Card affichant le détail d'un exercice dans le récap de séance
 import { RirInfo } from '@/components/ui/RirInfo';
-import type { ExerciseHistoryDetail } from '@/types/workout';
+import type { ExerciseHistoryDetail, SetDetails } from '@/types/workout';
 
 interface RecapExerciseCardProps {
   exerciseHistory: ExerciseHistoryDetail;
 }
 
-function formatSetLine(set: ExerciseHistoryDetail['set_details'][0]): string {
+function formatSetLine(set: SetDetails): string {
   const actual = set.actual;
   const parts: string[] = [];
 

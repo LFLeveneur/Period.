@@ -9,7 +9,6 @@ import { useToast } from '@/hooks/useToast';
 import { CyclePhaseBadge } from '@/components/ui/CyclePhaseBadge';
 import { VictoryCard } from '@/components/session/VictoryCard';
 import { RecapExerciseCard } from '@/components/session/RecapExerciseCard';
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { FEELING_LABELS, RECAP_MESSAGES } from '@/constants/session';
 import { PHASE_DISPLAY_CONFIG } from '@/utils/phaseConfig';
 import type { SessionHistoryDetail } from '@/types/workout';

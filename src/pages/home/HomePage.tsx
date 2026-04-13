@@ -15,7 +15,6 @@ import { ProgramChoiceModal } from '@/components/home/ProgramChoiceModal';
 import { Modal } from '@/components/ui/Modal';
 import { getUpcomingSessions } from '@/services/homeService';
 import { declarePeriodToday } from '@/services/healthDataService';
-import { RirInfo } from '@/components/ui/RirInfo';
 import type { CyclePhaseDisplay } from '@/types/cycle';
 import type { UpcomingSession } from '@/types/workout';
 
@@ -107,6 +106,7 @@ const PHASE_INFO: Record<string, PhaseInfo> = {
     id: 'luteal_late',
     intensityLabel: 'si c\'est plus dur qu\'habitude, c\'est normal — réduis si tu en as besoin',
     desc: 'la progestérone chute et ton corps récupère moins vite. c\'est ok de mettre moins sur la barre — la phase folliculaire arrive.',
+    daysLabel: 'jours 22 à fin',
     bgClass: 'bg-violet-50',
     borderClass: 'border-violet-100',
     badgeBg: 'bg-violet-100',
@@ -184,8 +184,6 @@ export function HomePage() {
   const currentDay = cycleDay?.cycleDay ?? 1;
   const cycleLength = cycleDay?.cycleLength ?? 28;
   const ovulationDay = cycleDay?.ovulationDay ?? 14;
-  const periodLength = cycleDay?.periodLength ?? 5;
-
   // Calculs pour la section "prochaines phases"
   const daysUntilOvulation = getDaysUntilPhase(currentDay, ovulationDay - 1, cycleLength);
   const daysUntilLuteal = getDaysUntilPhase(currentDay, ovulationDay + 2, cycleLength);

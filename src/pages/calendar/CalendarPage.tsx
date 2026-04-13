@@ -5,7 +5,6 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
 import { getCalendarMonth } from '@/services/calendarService';
 import type { CalendarMonth, CalendarDay } from '@/services/calendarService';
-import type { CycleDay } from '@/types/cycle';
 
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -22,7 +21,7 @@ export function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(today);
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [calendarMonth, setCalendarMonth] = useState<CalendarMonth | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   const start = startOfMonth(currentDate);
   const end = endOfMonth(currentDate);
@@ -56,7 +55,7 @@ export function CalendarPage() {
   }
 
   // Mapper phase vers couleur Tailwind
-  const getMockedColor = (day: Date, dayData: CalendarDay): string => {
+  const getMockedColor = (_day: Date, dayData: CalendarDay): string => {
     if (!cycleTracking || !dayData.cycleDay) {
       return 'bg-white text-slate-700 border border-slate-100';
     }

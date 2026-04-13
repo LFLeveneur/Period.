@@ -25,8 +25,6 @@ import {
   deleteSession,
   updateSessionExercise,
   deleteSessionExercise,
-  reorderSessions,
-  reorderExercises,
 } from '@/services/programService';
 import { getExerciseCatalog, getCustomExercises, createCustomExercise } from '@/services/exerciseService';
 import type {
@@ -34,8 +32,6 @@ import type {
   ExerciseCatalogItem,
   CustomExercise,
   ExerciseInputType,
-  Program,
-  ProgramSession,
 } from '@/types/workout';
 import type { SessionWithExercises } from '@/services/programService';
 import { InputField } from '@/components/ui/InputField';
@@ -455,12 +451,11 @@ export function ProgramEditPage() {
 
   // États de sauvegarde
   const [saving, setSaving] = useState(false);
-  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showDeleteSessionModal, setShowDeleteSessionModal] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      distance: 8,
+      activationConstraint: { distance: 8 },
     })
   );
 
@@ -483,12 +478,12 @@ export function ProgramEditPage() {
     const { program, sessions } = data;
 
     // Transforme les données du programme en brouillon
-    const sessionDrafts: SessionDraft[] = sessions.map((sw: SessionWithExercises, sIdx: number) => ({
+    const sessionDrafts: SessionDraft[] = sessions.map((sw: SessionWithExercises) => ({
       id: sw.session.id,
       dbId: sw.session.id,
       name: sw.session.name,
       week_days: sw.session.day_of_week !== null ? [sw.session.day_of_week] : [],
-      exercises: sw.exercises.map((se, eIdx) => ({
+      exercises: sw.exercises.map((se) => ({
         id: se.sessionExercise.id,
         dbId: se.sessionExercise.id,
         exercise: se.exercise!,
@@ -1017,29 +1012,21 @@ export function ProgramEditPage() {
       <Modal
         isOpen={showDeleteSessionModal !== null}
         title="supprimer cette séance ?"
-        onClose={() => setShowDeleteSessionModal(null)}
+        onCancel={() => setShowDeleteSessionModal(null)}
+        onConfirm={() => showDeleteSessionModal && confirmDeleteSession(showDeleteSessionModal)}
+        confirmLabel="supprimer"
+        isDanger
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
-            les exercices de cette séance seront supprimés. l'historique des séances complétées sera conservé.
-          </p>
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <PrimaryButton variant="secondary" onClick={() => setShowDeleteSessionModal(null)} style={{ flex: 1 }}>
-              annuler
-            </PrimaryButton>
-            <PrimaryButton
-              onClick={() => showDeleteSessionModal && confirmDeleteSession(showDeleteSessionModal)}
-              style={{ flex: 1, backgroundColor: 'var(--color-error)' }}
-            >
-              supprimer
-            </PrimaryButton>
-          </div>
-        </div>
+        <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+          les exercices de cette séance seront supprimés. l'historique des séances complétées sera conservé.
+        </p>
       </Modal>
 
       {/* Modale création exercice perso */}
       {showCreateExercise && (
         <ExerciseFormSheet
+          isOpen={showCreateExercise}
+          exercise={null}
           onSave={handleCreateCustomExercise}
           onClose={() => setShowCreateExercise(false)}
         />

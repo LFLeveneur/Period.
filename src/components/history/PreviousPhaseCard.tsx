@@ -1,5 +1,6 @@
 // Card comparaison "même phase, cycle précédent"
 import { PHASE_DISPLAY_CONFIG } from '@/utils/phaseConfig';
+import type { CyclePhaseDisplay } from '@/types/cycle';
 import type { ExerciseHistoryDetail } from '@/types/workout';
 import type { ExerciseHistoryEntry } from '@/types/workout';
 
@@ -50,10 +51,10 @@ function weeksAgo(isoDate: string): number {
 
 export function PreviousPhaseCard({ current, previous }: PreviousPhaseCardProps) {
   const prevPhase = previous.cycle_phase
-    ? (previous.cycle_phase === 'luteal' ? 'luteal_early' : previous.cycle_phase) as Parameters<typeof PHASE_DISPLAY_CONFIG['menstrual']['label']['charAt']>[0]
+    ? (previous.cycle_phase === 'luteal' ? 'luteal_early' : previous.cycle_phase) as CyclePhaseDisplay
     : null;
   const phaseLabel = prevPhase
-    ? PHASE_DISPLAY_CONFIG[prevPhase as keyof typeof PHASE_DISPLAY_CONFIG]?.label
+    ? PHASE_DISPLAY_CONFIG[prevPhase]?.label
     : 'phase inconnue';
 
   const prevSet = extractBestSet(previous.set_details);
