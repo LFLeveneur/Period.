@@ -41,7 +41,12 @@
       "Bash(git mv:*)",
       "Bash(git commit -m 'fix: rename Admin folder to admin for case-sensitive build on Vercel:*)",
       "Bash(rm -f .git/index.lock)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(pkill -f \"npm run dev\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s http://localhost:5175/@react-refresh)",
+      "Bash(pkill -f \"vite|pnpm dev\")"
     ]
   }
 }

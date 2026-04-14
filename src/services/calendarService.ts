@@ -11,10 +11,10 @@ export interface CalendarDay {
   date: string;
   /** Données de phase du cycle — null si cycle non suivi ou pas de données */
   cycleDay: CycleDay | null;
-  /** Séance complétée ce jour */
-  sessionHistory: { id: string; sessionName: string; durationMinutes: number } | null;
-  /** Séance prévue non complétée */
-  pendingSession: { id: string; sessionName: string } | null;
+  /** Séances complétées ce jour (peut être plusieurs) */
+  sessionHistory: { id: string; sessionName: string; durationMinutes: number }[];
+  /** Séances prévues non complétées (peut être plusieurs) */
+  pendingSession: { id: string; sessionName: string }[];
 }
 
 /** Résultat du calendrier mensuel */
@@ -84,38 +84,40 @@ export async function getCalendarMonth(
     console.warn('[calendarService] Séances prévues (récurrentes) non chargées (non bloquant) :', pendingByDayOfWeekResult.error.message);
   }
 
-  // Construit un index des séances complétées par date (YYYY-MM-DD)
-  const historyByDate: Record<string, { id: string; sessionName: string; durationMinutes: number }> = {};
+  // Construit un index des séances complétées par date (YYYY-MM-DD) — accumule toutes les séances
+  const historyByDate: Record<string, { id: string; sessionName: string; durationMinutes: number }[]> = {};
   for (const row of (historyResult.data ?? []) as Record<string, unknown>[]) {
     const completedAt = row['completed_at'] as string | null;
     if (!completedAt) continue;
     const dateStr = completedAt.substring(0, 10);
-    if (!historyByDate[dateStr]) {
-      // Récupère le nom de la séance depuis la relation JOIN program_sessions
-      const programSessions = row['program_sessions'] as Record<string, unknown> | null;
-      const sessionName = (programSessions?.['name'] as string | null) ?? 'Séance';
+    // Récupère le nom de la séance depuis la relation JOIN program_sessions
+    const programSessions = row['program_sessions'] as Record<string, unknown> | null;
+    const sessionName = (programSessions?.['name'] as string | null) ?? 'Séance';
 
-      historyByDate[dateStr] = {
-        id: row['id'] as string,
-        sessionName,
-        durationMinutes: (row['duration_minutes'] as number | null) ?? 0,
-      };
+    if (!historyByDate[dateStr]) {
+      historyByDate[dateStr] = [];
     }
+    historyByDate[dateStr]!.push({
+      id: row['id'] as string,
+      sessionName,
+      durationMinutes: (row['duration_minutes'] as number | null) ?? 0,
+    });
   }
 
-  // Construit un index des séances prévues par date
-  const pendingByDate: Record<string, { id: string; sessionName: string }> = {};
+  // Construit un index des séances prévues par date — accumule toutes les séances
+  const pendingByDate: Record<string, { id: string; sessionName: string }[]> = {};
 
   // Ajouter les séances avec date spécifique (scheduled_date) — seulement si future ou aujourd'hui
   for (const row of (pendingByDateResult.data ?? []) as Record<string, unknown>[]) {
     const dateStr = row['scheduled_date'] as string | null;
     if (!dateStr || dateStr < todayStr) continue; // Exclure les séances passées
     if (!pendingByDate[dateStr]) {
-      pendingByDate[dateStr] = {
-        id: row['id'] as string,
-        sessionName: (row['name'] as string | null) ?? 'Séance',
-      };
+      pendingByDate[dateStr] = [];
     }
+    pendingByDate[dateStr]!.push({
+      id: row['id'] as string,
+      sessionName: (row['name'] as string | null) ?? 'Séance',
+    });
   }
 
   // Ajouter les séances récurrentes (day_of_week) — seulement si future ou aujourd'hui
@@ -136,11 +138,12 @@ export async function getCalendarMonth(
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         if (dateStr < todayStr) continue; // Exclure les séances passées
         if (!pendingByDate[dateStr]) {
-          pendingByDate[dateStr] = {
-            id: sessionId,
-            sessionName,
-          };
+          pendingByDate[dateStr] = [];
         }
+        pendingByDate[dateStr]!.push({
+          id: sessionId,
+          sessionName,
+        });
       }
     }
   }
@@ -159,8 +162,8 @@ export async function getCalendarMonth(
     days.push({
       date: dateStr,
       cycleDay: phaseByDate[dateStr] ?? null,
-      sessionHistory: historyByDate[dateStr] ?? null,
-      pendingSession: pendingByDate[dateStr] ?? null,
+      sessionHistory: historyByDate[dateStr] ?? [],
+      pendingSession: pendingByDate[dateStr] ?? [],
     });
   }
 

@@ -76,10 +76,12 @@ export function DayDetailSheet({ isOpen, day, onClose, onSessionTap }: DayDetail
 
             {/* Sessions */}
             <div className="space-y-4 mb-8">
-              {day.sessionHistory ? (
+              {/* Séances complétées */}
+              {day.sessionHistory.map(session => (
                 <button
+                  key={session.id}
                   onClick={() => {
-                    onSessionTap(day.sessionHistory!.id, true);
+                    onSessionTap(session.id, true);
                     onClose();
                   }}
                   className="w-full bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center justify-between text-left active:scale-[0.98] transition-transform"
@@ -87,16 +89,20 @@ export function DayDetailSheet({ isOpen, day, onClose, onSessionTap }: DayDetail
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xl">✅</span>
-                      <h4 className="font-bold text-emerald-900">{day.sessionHistory.sessionName}</h4>
+                      <h4 className="font-bold text-emerald-900">{session.sessionName}</h4>
                     </div>
-                    <p className="text-emerald-600 text-sm ml-7">{day.sessionHistory.durationMinutes} min</p>
+                    <p className="text-emerald-600 text-sm ml-7">{session.durationMinutes} min</p>
                   </div>
                   <ChevronRight size={20} className="text-emerald-400" />
                 </button>
-              ) : day.pendingSession ? (
+              ))}
+
+              {/* Séances prévues */}
+              {day.pendingSession.map(session => (
                 <button
+                  key={session.id}
                   onClick={() => {
-                    onSessionTap(day.pendingSession!.id, false);
+                    onSessionTap(session.id, false);
                     onClose();
                   }}
                   className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center justify-between text-left active:scale-[0.98] transition-transform"
@@ -104,13 +110,16 @@ export function DayDetailSheet({ isOpen, day, onClose, onSessionTap }: DayDetail
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xl">🗓</span>
-                      <h4 className="font-bold text-slate-900">{day.pendingSession.sessionName}</h4>
+                      <h4 className="font-bold text-slate-900">{session.sessionName}</h4>
                     </div>
                     <p className="text-slate-500 text-sm ml-7">Prévue</p>
                   </div>
                   <ChevronRight size={20} className="text-slate-400" />
                 </button>
-              ) : (
+              ))}
+
+              {/* Aucune séance */}
+              {day.sessionHistory.length === 0 && day.pendingSession.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-slate-400 font-medium lowercase">aucune séance ce jour-là</p>
                 </div>

@@ -148,10 +148,10 @@ export function CalendarPage() {
 
                   {/* Dots Container */}
                   <div className="absolute bottom-2 flex gap-1">
-                    {dayData?.sessionHistory && (
+                    {dayData?.sessionHistory.length! > 0 && (
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/20" />
                     )}
-                    {!dayData?.sessionHistory && dayData?.pendingSession && (
+                    {dayData?.sessionHistory.length! === 0 && dayData?.pendingSession.length! > 0 && (
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                     )}
                   </div>
@@ -218,41 +218,50 @@ export function CalendarPage() {
               </div>
 
               <div className="space-y-4 mb-8">
-                {selectedDay.sessionHistory ? (
+                {/* Séances complétées */}
+                {selectedDay.sessionHistory.map(session => (
                   <button
+                    key={session.id}
                     onClick={() => {
                       setSelectedDay(null);
-                      navigate(`/history/${selectedDay.sessionHistory?.id}`);
+                      navigate(`/history/${session.id}`);
                     }}
                     className="w-full bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center justify-between text-left active:scale-[0.98] transition-transform"
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xl">✅</span>
-                        <h4 className="font-bold text-emerald-900">{selectedDay.sessionHistory.sessionName}</h4>
+                        <h4 className="font-bold text-emerald-900">{session.sessionName}</h4>
                       </div>
-                      <p className="text-emerald-600 text-sm ml-7">{selectedDay.sessionHistory.durationMinutes} min</p>
+                      <p className="text-emerald-600 text-sm ml-7">{session.durationMinutes} min</p>
                     </div>
                     <ChevronRight size={20} className="text-emerald-400" />
                   </button>
-                ) : selectedDay.pendingSession ? (
+                ))}
+
+                {/* Séances prévues */}
+                {selectedDay.pendingSession.map(session => (
                   <button
+                    key={session.id}
                     onClick={() => {
                       setSelectedDay(null);
-                      navigate(`/session/${selectedDay.pendingSession?.id}/preview`);
+                      navigate(`/session/${session.id}/preview`);
                     }}
                     className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center justify-between text-left active:scale-[0.98] transition-transform"
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xl">🗓</span>
-                        <h4 className="font-bold text-slate-900">{selectedDay.pendingSession.sessionName}</h4>
+                        <h4 className="font-bold text-slate-900">{session.sessionName}</h4>
                       </div>
                       <p className="text-slate-500 text-sm ml-7">Prévue</p>
                     </div>
                     <ChevronRight size={20} className="text-slate-400" />
                   </button>
-                ) : (
+                ))}
+
+                {/* Aucune séance */}
+                {selectedDay.sessionHistory.length === 0 && selectedDay.pendingSession.length === 0 && (
                   <div className="text-center py-8">
                     <p className="text-slate-400 font-medium lowercase">aucune séance ce jour-là</p>
                   </div>
