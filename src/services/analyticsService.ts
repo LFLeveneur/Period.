@@ -8,6 +8,9 @@ import type {
   ActivationKpis,
   RetentionKpis,
   PhaseDistribution,
+  AdminUserSummary,
+  UserDetail,
+  AnalyticsEvent,
 } from '@/types/analytics';
 import { ONE_TIME_EVENTS } from '@/types/analytics';
 
@@ -114,14 +117,15 @@ export async function submitFeedback(
 /**
  * Récupère le nombre d'events par type pour les KPIs d'activation.
  * Requiert le rôle admin (RLS).
+ * @param excludeUserIds IDs des users à exclure (ex: users de test)
  */
-export async function getActivationKpis(): Promise<{
+export async function getActivationKpis(excludeUserIds: string[] = []): Promise<{
   data: ActivationKpis | null;
   error: string | null;
 }> {
   try {
     // Compte les events distincts par type — one-time events = 1 par utilisatrice
-    const { data, error } = await supabase
+    let query = supabase
       .from('events')
       .select('event_type')
       .in('event_type', [
@@ -131,6 +135,12 @@ export async function getActivationKpis(): Promise<{
         'training_filled',
         'session_logged',
       ]);
+
+    if (excludeUserIds.length > 0) {
+      query = query.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
+    }
+
+    const { data, error } = await query;
 
     if (error) return { data: null, error: error.message };
 
@@ -157,8 +167,9 @@ export async function getActivationKpis(): Promise<{
 /**
  * Calcule les métriques de rétention basées sur page_viewed.
  * Requiert le rôle admin (RLS).
+ * @param excludeUserIds IDs des users à exclure (ex: users de test)
  */
-export async function getRetentionKpis(): Promise<{
+export async function getRetentionKpis(excludeUserIds: string[] = []): Promise<{
   data: RetentionKpis | null;
   error: string | null;
 }> {
@@ -167,29 +178,28 @@ export async function getRetentionKpis(): Promise<{
     const ago7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const ago30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Filtre commun pour exclure les users de test
+    const applyExclusion = <T extends { not: (col: string, op: string, val: string) => T }>(q: T) =>
+      excludeUserIds.length > 0 ? q.not('user_id', 'in', `(${excludeUserIds.join(',')})`) : q;
+
     // Utilisatrices actives sur 7 jours
-    const { data: data7d, error: err7d } = await supabase
-      .from('events')
-      .select('user_id')
-      .eq('event_type', 'page_viewed')
-      .gte('created_at', ago7d);
+    const { data: data7d, error: err7d } = await applyExclusion(
+      supabase.from('events').select('user_id').eq('event_type', 'page_viewed').gte('created_at', ago7d)
+    );
 
     if (err7d) return { data: null, error: err7d.message };
 
     // Utilisatrices actives sur 30 jours
-    const { data: data30d, error: err30d } = await supabase
-      .from('events')
-      .select('user_id')
-      .eq('event_type', 'page_viewed')
-      .gte('created_at', ago30d);
+    const { data: data30d, error: err30d } = await applyExclusion(
+      supabase.from('events').select('user_id').eq('event_type', 'page_viewed').gte('created_at', ago30d)
+    );
 
     if (err30d) return { data: null, error: err30d.message };
 
-    // Total utilisatrices (via signup_started ou onboarding_completed)
-    const { data: dataTotal, error: errTotal } = await supabase
-      .from('events')
-      .select('user_id')
-      .eq('event_type', 'signup_started');
+    // Total utilisatrices (via signup_started)
+    const { data: dataTotal, error: errTotal } = await applyExclusion(
+      supabase.from('events').select('user_id').eq('event_type', 'signup_started')
+    );
 
     if (errTotal) return { data: null, error: errTotal.message };
 
@@ -212,16 +222,22 @@ export async function getRetentionKpis(): Promise<{
  * La phase est stockée dans metadata.phase lors du trackEvent('session_logged').
  * Requiert le rôle admin (RLS).
  */
-export async function getPhaseDistribution(): Promise<{
+export async function getPhaseDistribution(excludeUserIds: string[] = []): Promise<{
   data: PhaseDistribution[] | null;
   error: string | null;
 }> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('events')
       .select('metadata')
       .eq('event_type', 'session_logged')
       .not('metadata', 'is', null);
+
+    if (excludeUserIds.length > 0) {
+      query = query.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
+    }
+
+    const { data, error } = await query;
 
     if (error) return { data: null, error: error.message };
 
@@ -286,5 +302,126 @@ export async function getUserCount(): Promise<{
   } catch (err) {
     console.error('[analyticsService] getUserCount', err);
     return { data: null, error: 'Erreur lors du comptage des utilisatrices.' };
+  }
+}
+
+/**
+ * Récupère la liste de tous les profils avec leur résumé d'activité.
+ * Requiert une RLS admin sur profiles (voir migration SQL).
+ */
+export async function getAdminUserList(): Promise<{
+  data: AdminUserSummary[] | null;
+  error: string | null;
+}> {
+  try {
+    // Récupère tous les profils
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('user_id, name, level, objective, is_test_user, is_admin, onboarding_completed, created_at')
+      .order('created_at', { ascending: false });
+
+    if (profilesError) return { data: null, error: profilesError.message };
+
+    // Récupère tous les events pour agréger l'activité par user
+    const { data: events, error: eventsError } = await supabase
+      .from('events')
+      .select('user_id, event_type, created_at');
+
+    if (eventsError) return { data: null, error: eventsError.message };
+
+    // Agrège les events par user_id
+    const activityByUser: Record<string, { sessions: number; last_active: string | null; total: number }> = {};
+    for (const ev of events ?? []) {
+      if (!activityByUser[ev.user_id]) {
+        activityByUser[ev.user_id] = { sessions: 0, last_active: null, total: 0 };
+      }
+      activityByUser[ev.user_id].total++;
+      if (ev.event_type === 'session_logged') {
+        activityByUser[ev.user_id].sessions++;
+      }
+      const current = activityByUser[ev.user_id].last_active;
+      if (!current || ev.created_at > current) {
+        activityByUser[ev.user_id].last_active = ev.created_at;
+      }
+    }
+
+    const result: AdminUserSummary[] = (profiles ?? []).map((p) => ({
+      user_id: p.user_id,
+      name: p.name ?? null,
+      level: p.level ?? null,
+      objective: p.objective ?? null,
+      is_test_user: p.is_test_user ?? false,
+      is_admin: p.is_admin ?? false,
+      onboarding_completed: p.onboarding_completed ?? false,
+      created_at: p.created_at,
+      sessions_logged: activityByUser[p.user_id]?.sessions ?? 0,
+      last_active_at: activityByUser[p.user_id]?.last_active ?? null,
+      events_total: activityByUser[p.user_id]?.total ?? 0,
+    }));
+
+    return { data: result, error: null };
+  } catch (err) {
+    console.error('[analyticsService] getAdminUserList', err);
+    return { data: null, error: 'Erreur lors de la récupération des utilisateurs.' };
+  }
+}
+
+/**
+ * Active ou désactive le flag "user de test" sur un profil.
+ * Requiert une RLS admin sur profiles (voir migration SQL).
+ */
+export async function toggleTestUser(
+  userId: string,
+  isTest: boolean
+): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_test_user: isTest })
+      .eq('user_id', userId);
+
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (err) {
+    console.error('[analyticsService] toggleTestUser', err);
+    return { error: 'Erreur lors de la mise à jour.' };
+  }
+}
+
+/**
+ * Récupère le détail d'un utilisateur spécifique (events + feedbacks).
+ * Requiert le rôle admin (RLS events/feedback).
+ */
+export async function getUserDetail(userId: string): Promise<{
+  data: UserDetail | null;
+  error: string | null;
+}> {
+  try {
+    const [eventsRes, feedbackRes] = await Promise.all([
+      supabase
+        .from('events')
+        .select('id, user_id, event_type, metadata, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(30),
+      supabase
+        .from('feedback')
+        .select('id, user_id, liked, frustrated, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    if (eventsRes.error) return { data: null, error: eventsRes.error.message };
+
+    return {
+      data: {
+        events: (eventsRes.data ?? []) as AnalyticsEvent[],
+        feedbacks: (feedbackRes.data ?? []) as FeedbackEntry[],
+      },
+      error: null,
+    };
+  } catch (err) {
+    console.error('[analyticsService] getUserDetail', err);
+    return { data: null, error: 'Erreur lors de la récupération du détail.' };
   }
 }

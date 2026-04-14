@@ -1,4 +1,5 @@
 // Types liés au tracking analytics et au feedback qualitatif
+import type { FitnessLevel, FitnessObjective } from './auth';
 
 /** Types d'événements trackés dans Supabase */
 export type EventType =
@@ -63,4 +64,28 @@ export interface RetentionKpis {
 export interface PhaseDistribution {
   phase: string;
   count: number;
+}
+
+/** Résumé admin d'un utilisateur — profil + activité agrégée */
+export interface AdminUserSummary {
+  user_id: string;
+  name: string | null;
+  level: FitnessLevel | null;
+  objective: FitnessObjective | null;
+  is_test_user: boolean;
+  is_admin: boolean;
+  onboarding_completed: boolean;
+  created_at: string;
+  /** Nombre total de séances loggées */
+  sessions_logged: number;
+  /** Date de dernière activité (dernier event) */
+  last_active_at: string | null;
+  /** Nombre total d'events trackés */
+  events_total: number;
+}
+
+/** Détail individuel d'un utilisateur pour le panneau admin */
+export interface UserDetail {
+  events: AnalyticsEvent[];
+  feedbacks: FeedbackEntry[];
 }

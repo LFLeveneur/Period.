@@ -21,6 +21,8 @@ export interface Profile {
   avatar_url: string | null;
   onboarding_completed: boolean;
   is_admin: boolean;
+  /** Marqué comme user de test — exclu des KPIs globaux */
+  is_test_user: boolean;
   created_at: string;
   updated_at: string;
 }
