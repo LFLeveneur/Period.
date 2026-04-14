@@ -99,6 +99,7 @@ export async function saveSession(
           session_history_id: sessionHistoryId,
           exercise_catalog_id: state.exerciseIds[sessionExerciseId]?.catalogId ?? null,
           user_custom_exercise_id: state.exerciseIds[sessionExerciseId]?.customId ?? null,
+          input_type: state.exerciseIds[sessionExerciseId]?.inputType ?? null,
           set_details,
         });
 
@@ -242,7 +243,7 @@ interface RawExerciseHistory {
   session_history_id: string;
   exercise_catalog_id: string | null;
   user_custom_exercise_id: string | null;
-  set_details: SetDetails[] | null; // toujours null — colonnes performance non disponibles en base
+  set_details: SetDetails[] | null;
   input_type: string | null;
   cycle_phase: string | null;
   completed_at: string;
@@ -251,6 +252,7 @@ interface RawExerciseHistory {
 
 /**
  * Récupère l'historique brut d'un exercice (jointure avec session_history).
+ * Inclut set_details pour permettre la comparaison poids/reps dans preview et active.
  */
 async function getExerciseHistoryRaw(
   userId: string,
@@ -260,7 +262,7 @@ async function getExerciseHistoryRaw(
 ): Promise<(RawExerciseHistory & { cycle_phase: CyclePhase | null; completed_at: string })[]> {
   let query = supabase
     .from('exercise_history')
-    .select('*, session_history!inner ( completed_at, cycle_phase, cycle_day, user_id )')
+    .select('id, session_history_id, exercise_catalog_id, user_custom_exercise_id, set_details, input_type, session_history!inner ( completed_at, cycle_phase, cycle_day, user_id )')
     .eq('session_history.user_id', userId)
     .order('session_history(completed_at)', { ascending: false })
     .limit(limit);
@@ -287,7 +289,7 @@ async function getExerciseHistoryRaw(
       session_history_id: row['session_history_id'] as string,
       exercise_catalog_id: row['exercise_catalog_id'] as string | null,
       user_custom_exercise_id: row['user_custom_exercise_id'] as string | null,
-      set_details: null,
+      set_details: (row['set_details'] as SetDetails[] | null) ?? null,
       input_type: row['input_type'] as string | null,
       cycle_phase: (sh?.['cycle_phase'] as CyclePhase | null) ?? null,
       completed_at: (sh?.['completed_at'] as string) ?? '',
@@ -378,42 +380,93 @@ export async function getSessionHistoryDetail(
       : victoriesRaw
     : [];
 
-  const exerciseDetails: ExerciseHistoryDetail[] = (exercises ?? []).map((ex: Record<string, unknown>) => {
-    const catalog = ex['exercise_catalog'] as Record<string, unknown> | null;
-    const custom = ex['user_custom_exercise'] as Record<string, unknown> | null;
-    const exerciseName =
-      (catalog?.['name'] as string) ?? (custom?.['name'] as string) ?? 'exercice supprimé';
+  const userId = sh['user_id'] as string;
+  const currentSessionPhase = sh['cycle_phase'] as CyclePhase | null;
 
-    const rawSetDetails = ex['set_details'];
-    const setDetails: SetDetails[] | null = Array.isArray(rawSetDetails) ? (rawSetDetails as SetDetails[]) : null;
+  /** Calcule le volume total d'un tableau de SetDetails (poids × reps par série) */
+  function computeVolume(setDetails: SetDetails[]): number {
+    return setDetails.reduce((sum, s) => {
+      const w = s.actual?.weight ?? 0;
+      const r = s.actual?.reps ?? 0;
+      return sum + w * r;
+    }, 0);
+  }
 
-    // Calcul avg_rir
-    let avgRir: number | null = null;
-    if (setDetails && setDetails.length > 0) {
-      const rirsWithValues = setDetails
-        .map((s: SetDetails) => s.actual?.rir)
-        .filter((r): r is number => r !== undefined && r !== null);
-      if (rirsWithValues.length > 0) {
-        avgRir =
-          Math.round(
-            (rirsWithValues.reduce((sum: number, r: number) => sum + r, 0) / rirsWithValues.length) * 10
-          ) / 10;
+  // Construit la liste des exercices avec deltas de comparaison (en parallèle)
+  const exerciseDetails: ExerciseHistoryDetail[] = await Promise.all(
+    (exercises ?? []).map(async (ex: Record<string, unknown>) => {
+      const catalog = ex['exercise_catalog'] as Record<string, unknown> | null;
+      const custom = ex['user_custom_exercise'] as Record<string, unknown> | null;
+      const exerciseName =
+        (catalog?.['name'] as string) ?? (custom?.['name'] as string) ?? 'exercice supprimé';
+
+      const rawSetDetails = ex['set_details'];
+      const setDetails: SetDetails[] | null = Array.isArray(rawSetDetails) ? (rawSetDetails as SetDetails[]) : null;
+
+      // Calcul avg_rir
+      let avgRir: number | null = null;
+      if (setDetails && setDetails.length > 0) {
+        const rirsWithValues = setDetails
+          .map((s: SetDetails) => s.actual?.rir)
+          .filter((r): r is number => r !== undefined && r !== null);
+        if (rirsWithValues.length > 0) {
+          avgRir =
+            Math.round(
+              (rirsWithValues.reduce((sum: number, r: number) => sum + r, 0) / rirsWithValues.length) * 10
+            ) / 10;
+        }
       }
-    }
 
-    return {
-      id: ex['id'] as string,
-      exercise_catalog_id: ex['exercise_catalog_id'] as string | null,
-      user_custom_exercise_id: ex['user_custom_exercise_id'] as string | null,
-      exercise_name: exerciseName,
-      input_type: ex['input_type'] as ExerciseHistoryDetail['input_type'],
-      set_details: setDetails,
-      progression: (ex['progression'] as 'up' | 'down' | 'stable' | null) ?? null,
-      vs_previous_kg_delta: null,
-      vs_same_phase_kg_delta: null,
-      avg_rir: avgRir,
-    };
-  });
+      // Volume de la session courante pour cet exercice
+      const currentVolume = setDetails ? computeVolume(setDetails) : 0;
+
+      // Deltas vs séance précédente et vs même phase
+      let vsPreviousKgDelta: number | null = null;
+      let vsSamePhaseKgDelta: number | null = null;
+
+      if (currentVolume > 0) {
+        const catalogId = ex['exercise_catalog_id'] as string | null;
+        const customId = ex['user_custom_exercise_id'] as string | null;
+        // Récupère les 10 dernières entrées pour cet exercice (toutes phases)
+        const prevHistory = await getExerciseHistoryRaw(userId, catalogId, customId, 10);
+        // Exclut la session courante
+        const filtered = prevHistory.filter(h => h.session_history_id !== sessionHistoryId);
+
+        // Vs séance précédente — la plus récente
+        const prevEntry = filtered[0];
+        if (prevEntry?.set_details && prevEntry.set_details.length > 0) {
+          const prevVolume = computeVolume(prevEntry.set_details);
+          if (prevVolume > 0) {
+            vsPreviousKgDelta = Math.round((currentVolume - prevVolume) * 10) / 10;
+          }
+        }
+
+        // Vs même phase du cycle précédent
+        if (currentSessionPhase) {
+          const samePhaseEntry = filtered.find(h => h.cycle_phase === currentSessionPhase);
+          if (samePhaseEntry?.set_details && samePhaseEntry.set_details.length > 0) {
+            const samePhaseVolume = computeVolume(samePhaseEntry.set_details);
+            if (samePhaseVolume > 0) {
+              vsSamePhaseKgDelta = Math.round((currentVolume - samePhaseVolume) * 10) / 10;
+            }
+          }
+        }
+      }
+
+      return {
+        id: ex['id'] as string,
+        exercise_catalog_id: ex['exercise_catalog_id'] as string | null,
+        user_custom_exercise_id: ex['user_custom_exercise_id'] as string | null,
+        exercise_name: exerciseName,
+        input_type: ex['input_type'] as ExerciseHistoryDetail['input_type'],
+        set_details: setDetails,
+        progression: (ex['progression'] as 'up' | 'down' | 'stable' | null) ?? null,
+        vs_previous_kg_delta: vsPreviousKgDelta,
+        vs_same_phase_kg_delta: vsSamePhaseKgDelta,
+        avg_rir: avgRir,
+      };
+    })
+  );
 
   const detail: SessionHistoryDetail = {
     id: sh['id'] as string,

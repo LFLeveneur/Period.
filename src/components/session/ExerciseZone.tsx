@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { RirInfo } from '@/components/ui/RirInfo';
 import type { ActiveSetData, SetTarget, ExerciseHistoryEntry } from '@/types/workout';
 import type { SessionExerciseWithDetails } from '@/services/programService';
+import type { CyclePhaseDisplay } from '@/types/cycle';
 
 interface ExerciseZoneProps {
   /** Exercice courant avec ses détails */
@@ -15,6 +16,8 @@ interface ExerciseZoneProps {
   onEditSet: (setIndex: number, data: Omit<ActiveSetData, 'completed'>) => void;
   /** Historique comparatif */
   history: ExerciseHistoryEntry[];
+  /** Phase du cycle en cours — pour filtrer la comparaison cycle précédent */
+  currentPhase?: CyclePhaseDisplay | null;
 }
 
 /** Formate l'historique condensé d'une entrée */
@@ -148,7 +151,16 @@ function formatSetSummary(s: ActiveSetData): string {
   return parts.join(' · ');
 }
 
-export function ExerciseZone({ exerciseWithDetails, exerciseState, onCompleteSet, onEditSet, history }: ExerciseZoneProps) {
+/** Table de correspondance phase UI → phase DB (4 valeurs) */
+const PHASE_UI_TO_DB: Record<CyclePhaseDisplay, string> = {
+  menstrual: 'menstrual',
+  follicular: 'follicular',
+  ovulation: 'ovulation',
+  luteal_early: 'luteal',
+  luteal_late: 'luteal',
+};
+
+export function ExerciseZone({ exerciseWithDetails, exerciseState, onCompleteSet, onEditSet, history, currentPhase }: ExerciseZoneProps) {
   const { sessionExercise, exercise } = exerciseWithDetails;
   const exerciseName = exercise?.name ?? 'exercice supprimé';
   const targets = sessionExercise.set_targets ?? [];
@@ -232,8 +244,18 @@ export function ExerciseZone({ exerciseWithDetails, exerciseState, onCompleteSet
   };
 
   const allCompleted = activeSetIndex === -1;
+
+  // Dernière séance (la plus récente, toutes phases confondues)
   const lastEntry = history[0] ?? null;
-  const samePhasePrevEntry = history.length > 1 ? history[1] : null;
+
+  // Même phase du cycle précédent — première entrée qui correspond à la phase DB, différente de lastEntry
+  const samePhasePrevEntry = currentPhase
+    ? history.find(h => {
+        const targetDb = PHASE_UI_TO_DB[currentPhase];
+        return h.cycle_phase === targetDb && h !== lastEntry;
+      }) ?? null
+    : null;
+
   const completedSetsCount = sets.filter(s => s.completed).length;
 
   return (
@@ -502,8 +524,8 @@ export function ExerciseZone({ exerciseWithDetails, exerciseState, onCompleteSet
         </div>
       )}
 
-      {/* Comparaisons historiques */}
-      {(lastEntry || samePhasePrevEntry) && (
+      {/* Comparaisons historiques — dernière séance + même phase cycle précédent */}
+      {(lastEntry || samePhasePrevEntry) ? (
         <div
           style={{
             borderTop: '1px solid var(--color-border)',
@@ -515,15 +537,31 @@ export function ExerciseZone({ exerciseWithDetails, exerciseState, onCompleteSet
         >
           {lastEntry && (
             <p style={{ margin: 0, fontFamily: 'var(--font-family)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-              semaine dernière — {formatHistoryLine(lastEntry)}
+              dernière séance — {formatHistoryLine(lastEntry) || '—'}
             </p>
           )}
           {samePhasePrevEntry && (
             <p style={{ margin: 0, fontFamily: 'var(--font-family)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-              même phase, cycle dernier — {formatHistoryLine(samePhasePrevEntry)}
+              même phase, cycle précédent — {formatHistoryLine(samePhasePrevEntry) || '—'}
             </p>
           )}
         </div>
+      ) : (
+        /* Pas d'historique — message encourageant */
+        <p
+          style={{
+            margin: 0,
+            fontFamily: 'var(--font-family)',
+            fontSize: 'var(--text-xs)',
+            color: 'var(--color-text-muted)',
+            borderTop: '1px solid var(--color-border)',
+            paddingTop: 'var(--space-2)',
+            fontStyle: 'italic',
+            lineHeight: 1.5,
+          }}
+        >
+          on n'a pas encore tes données sur cette phase. continue à utiliser Period. — dans un cycle, tu pourras te comparer à toi-même au bon moment. 🖤
+        </p>
       )}
 
       {/* Séparateur */}

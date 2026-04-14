@@ -52,7 +52,7 @@ export function SessionPreviewPage() {
             user!.id,
             ex.sessionExercise.exercise_catalog_id,
             ex.sessionExercise.user_custom_exercise_id,
-            5
+            20 // 20 entrées pour couvrir la même phase du cycle précédent (~4 semaines de séances)
           );
           histories[ex.sessionExercise.id] = data ?? [];
         })

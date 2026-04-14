@@ -62,6 +62,7 @@ export function PhaseInfoSheet({ isOpen, cycleDay, onClose }: PhaseInfoSheetProp
           bottom: 0,
           left: 0,
           right: 0,
+          marginBottom: '64px',
           backgroundColor: 'var(--color-surface)',
           borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
           padding: 'var(--space-6) var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom))',

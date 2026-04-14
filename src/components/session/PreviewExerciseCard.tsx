@@ -169,8 +169,8 @@ export function PreviewExerciseCard({
         )}
       </div>
 
-      {/* Historique comparatif — layout compact */}
-      {(lastEntry || samePhasePrevEntry) && (
+      {/* Historique comparatif — dernière séance + même phase cycle précédent */}
+      {(lastEntry || samePhasePrevEntry) ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -212,19 +212,19 @@ export function PreviewExerciseCard({
                   fontWeight: 'bold',
                 }}
               >
-                {formatHistoryEntry(lastEntry)}
+                {formatHistoryEntry(lastEntry) || '—'}
               </p>
             </div>
           )}
 
-          {samePhasePrevEntry && !lastEntry && (
+          {samePhasePrevEntry && (
             <div
               style={{
                 backgroundColor: 'var(--color-bg)',
                 borderRadius: 'var(--radius-lg)',
                 padding: 'var(--space-3)',
                 borderLeft: '3px solid var(--color-primary)',
-                opacity: 0.7,
+                opacity: 0.75,
               }}
             >
               <p
@@ -239,7 +239,7 @@ export function PreviewExerciseCard({
                   marginBottom: '4px',
                 }}
               >
-                même phase (précédent)
+                même phase — cycle précédent
               </p>
               <p
                 style={{
@@ -250,15 +250,13 @@ export function PreviewExerciseCard({
                   fontWeight: 'bold',
                 }}
               >
-                {formatHistoryEntry(samePhasePrevEntry)}
+                {formatHistoryEntry(samePhasePrevEntry) || '—'}
               </p>
             </div>
           )}
         </motion.div>
-      )}
-
-      {/* Pas d'historique — message discret */}
-      {!lastEntry && !samePhasePrevEntry && (
+      ) : (
+        /* Pas d'historique — message encourageant */
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -272,9 +270,10 @@ export function PreviewExerciseCard({
             padding: 'var(--space-3)',
             fontStyle: 'italic',
             textAlign: 'center',
+            lineHeight: 1.5,
           }}
         >
-          premiere séance pour cet exercice
+          on n'a pas encore tes données sur cette phase. continue à utiliser Period. — dans un cycle, tu pourras te comparer à toi-même au bon moment. 🖤
         </motion.p>
       )}
     </motion.div>

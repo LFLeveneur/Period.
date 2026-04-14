@@ -188,114 +188,170 @@ export function SessionRecapPage() {
           borderRadius: 'var(--radius-2xl)',
           padding: 'var(--space-5)',
           boxShadow: 'var(--shadow-md)',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1px 1fr 1px 1fr',
-          gap: 'var(--space-3)',
-          alignItems: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-4)',
         }}
       >
-        {/* Durée */}
-        {detail.duration_minutes && (
-          <>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
-              <span style={{ fontSize: '20px' }}>⏱️</span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-family)',
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--color-text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                }}
-              >
-                Durée
-              </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-family)',
-                  fontSize: 'var(--text-xl)',
-                  fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
-                  color: 'var(--color-text)',
-                }}
-              >
-                {detail.duration_minutes}
+        {/* Ligne 1 : durée · phase · ressenti */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1px 1fr 1px 1fr',
+            gap: 'var(--space-3)',
+            alignItems: 'center',
+          }}
+        >
+          {/* Durée */}
+          {detail.duration_minutes && (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+                <span style={{ fontSize: '20px' }}>⏱️</span>
                 <span
                   style={{
+                    fontFamily: 'var(--font-family)',
                     fontSize: 'var(--text-xs)',
-                    fontWeight: 'normal' as React.CSSProperties['fontWeight'],
                     color: 'var(--color-text-muted)',
-                    marginLeft: '2px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
                   }}
                 >
-                  min
+                  Durée
                 </span>
-              </span>
-            </div>
-            <div style={{ width: '1px', height: '48px', backgroundColor: 'var(--color-border)' }} />
-          </>
-        )}
+                <span
+                  style={{
+                    fontFamily: 'var(--font-family)',
+                    fontSize: 'var(--text-xl)',
+                    fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+                    color: 'var(--color-text)',
+                  }}
+                >
+                  {detail.duration_minutes}
+                  <span
+                    style={{
+                      fontSize: 'var(--text-xs)',
+                      fontWeight: 'normal' as React.CSSProperties['fontWeight'],
+                      color: 'var(--color-text-muted)',
+                      marginLeft: '2px',
+                    }}
+                  >
+                    min
+                  </span>
+                </span>
+              </div>
+              <div style={{ width: '1px', height: '48px', backgroundColor: 'var(--color-border)' }} />
+            </>
+          )}
 
-        {/* Phase */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
-          <span style={{ fontSize: '20px' }}>🌙</span>
-          <span
-            style={{
-              fontFamily: 'var(--font-family)',
-              fontSize: 'var(--text-xs)',
-              color: 'var(--color-text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-            }}
-          >
-            Phase
-          </span>
-          {displayPhase ? (
-            <CyclePhaseBadge phase={displayPhase} />
-          ) : (
+          {/* Phase */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+            <span style={{ fontSize: '20px' }}>🌙</span>
             <span
               style={{
                 fontFamily: 'var(--font-family)',
-                fontSize: 'var(--text-sm)',
+                fontSize: 'var(--text-xs)',
                 color: 'var(--color-text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
               }}
             >
-              —
+              Phase
             </span>
-          )}
-        </div>
-
-        {/* Ressenti */}
-        {feelingLabel && (
-          <>
-            <div style={{ width: '1px', height: '48px', backgroundColor: 'var(--color-border)' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
-              <span style={{ fontSize: '20px' }}>💪</span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-family)',
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--color-text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                }}
-              >
-                Ressenti
-              </span>
+            {displayPhase ? (
+              <CyclePhaseBadge phase={displayPhase} />
+            ) : (
               <span
                 style={{
                   fontFamily: 'var(--font-family)',
                   fontSize: 'var(--text-sm)',
-                  fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
-                  color: phaseConfig ? phaseConfig.cardTextColor : 'var(--color-text)',
-                  backgroundColor: phaseConfig ? phaseConfig.colorLight : 'var(--color-bg)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '2px var(--space-2)',
+                  color: 'var(--color-text-muted)',
                 }}
               >
-                {feelingLabel}
+                —
               </span>
-            </div>
-          </>
+            )}
+          </div>
+
+          {/* Ressenti */}
+          {feelingLabel && (
+            <>
+              <div style={{ width: '1px', height: '48px', backgroundColor: 'var(--color-border)' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+                <span style={{ fontSize: '20px' }}>💪</span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-family)',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--color-text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  Ressenti
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-family)',
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+                    color: phaseConfig ? phaseConfig.cardTextColor : 'var(--color-text)',
+                    backgroundColor: phaseConfig ? phaseConfig.colorLight : 'var(--color-bg)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '2px var(--space-2)',
+                  }}
+                >
+                  {feelingLabel}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Ligne 2 : volume total soulevé */}
+        {detail.total_volume !== null && detail.total_volume > 0 && (
+          <div
+            style={{
+              borderTop: '1px solid var(--color-border)',
+              paddingTop: 'var(--space-3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 'var(--space-2)',
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>🏋️</span>
+            <span
+              style={{
+                fontFamily: 'var(--font-family)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              volume total
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-family)',
+                fontSize: 'var(--text-xl)',
+                fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+                color: 'var(--color-text)',
+              }}
+            >
+              {detail.total_volume.toLocaleString('fr-FR')}
+              <span
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: 'normal' as React.CSSProperties['fontWeight'],
+                  color: 'var(--color-text-muted)',
+                  marginLeft: '2px',
+                }}
+              >
+                kg
+              </span>
+            </span>
+          </div>
         )}
       </div>
 

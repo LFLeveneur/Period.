@@ -6,96 +6,170 @@ interface RecapExerciseCardProps {
   exerciseHistory: ExerciseHistoryDetail;
 }
 
+/** Calcule le volume total d'un exercice (poids × reps, somme de toutes les séries) */
+function computeExerciseVolume(setDetails: SetDetails[]): number {
+  return setDetails.reduce((sum, s) => {
+    const w = s.actual?.weight ?? 0;
+    const r = s.actual?.reps ?? 0;
+    return sum + w * r;
+  }, 0);
+}
+
+/** Formate une ligne de série selon le type d'exercice */
 function formatSetLine(set: SetDetails): string {
   const actual = set.actual;
   const parts: string[] = [];
 
-  if (actual.weight !== undefined) parts.push(`${actual.weight}kg`);
-  if (actual.reps !== undefined) parts.push(`${actual.reps} reps`);
-  if (actual.duration !== undefined) {
+  if (actual.weight !== undefined && actual.weight !== null) parts.push(`${actual.weight} kg`);
+  if (actual.reps !== undefined && actual.reps !== null) parts.push(`${actual.reps} reps`);
+  if (actual.added_load !== undefined && actual.added_load !== null) parts.push(`+${actual.added_load} kg`);
+  if (actual.duration !== undefined && actual.duration !== null) {
     const m = Math.floor(actual.duration / 60);
     const s = actual.duration % 60;
-    parts.push(`${m}:${String(s).padStart(2, '0')}`);
+    parts.push(m > 0 ? `${m}min ${s > 0 ? s + 's' : ''}` : `${s}s`);
   }
-  if (actual.distance !== undefined) parts.push(`${actual.distance}km`);
-  if (actual.rir !== undefined) parts.push(`RIR ${actual.rir}`);
+  if (actual.distance !== undefined && actual.distance !== null) parts.push(`${actual.distance} km`);
+  if (actual.rir !== undefined && actual.rir !== null) parts.push(`RIR ${actual.rir}`);
 
-  return parts.join(' · ');
+  return parts.join(' · ') || '—';
 }
 
-function getProgressionIcon(
-  progression: ExerciseHistoryDetail['progression']
-): { icon: string; color: string } {
-  switch (progression) {
-    case 'up':
-      return { icon: '↑', color: 'var(--color-success)' };
-    case 'down':
-      return { icon: '↓', color: 'var(--color-error)' };
-    default:
-      return { icon: '→', color: 'var(--color-text-muted)' };
-  }
+/** Icône et couleur selon le sens du delta */
+function getDeltaStyle(delta: number): { icon: string; color: string } {
+  if (delta > 0) return { icon: '↑', color: 'var(--color-success)' };
+  if (delta < 0) return { icon: '↓', color: 'var(--color-error)' };
+  return { icon: '→', color: 'var(--color-text-muted)' };
 }
 
 export function RecapExerciseCard({ exerciseHistory }: RecapExerciseCardProps) {
-  const { icon: progIcon, color: progColor } = getProgressionIcon(exerciseHistory.progression);
   const sets = exerciseHistory.set_details ?? [];
+  const volume = sets.length > 0 ? computeExerciseVolume(sets) : 0;
+  const hasDelta =
+    exerciseHistory.vs_previous_kg_delta !== null ||
+    exerciseHistory.vs_same_phase_kg_delta !== null ||
+    exerciseHistory.avg_rir !== null;
 
   return (
     <div
       style={{
         backgroundColor: 'var(--color-surface)',
-        borderRadius: 'var(--radius-lg)',
+        borderRadius: 'var(--radius-xl)',
         padding: 'var(--space-4)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 'var(--space-2)',
+        gap: 'var(--space-3)',
+        boxShadow: 'var(--shadow-sm)',
       }}
     >
-      {/* Nom de l'exercice */}
-      <h3
+      {/* En-tête — nom + résumé volume */}
+      <div
         style={{
-          margin: 0,
-          fontFamily: 'var(--font-family)',
-          fontSize: 'var(--text-base)',
-          fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
-          color: 'var(--color-text)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 'var(--space-2)',
         }}
       >
-        {exerciseHistory.exercise_name}
-      </h3>
+        <h3
+          style={{
+            margin: 0,
+            fontFamily: 'var(--font-family)',
+            fontSize: 'var(--text-base)',
+            fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+            color: 'var(--color-text)',
+            flex: 1,
+          }}
+        >
+          {exerciseHistory.exercise_name}
+        </h3>
 
-      {/* Séries */}
+        {/* Résumé compact : X séries · Y kg total */}
+        {sets.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: '2px',
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'var(--font-family)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-muted)',
+              }}
+            >
+              {sets.length} série{sets.length > 1 ? 's' : ''}
+            </span>
+            {volume > 0 && (
+              <span
+                style={{
+                  fontFamily: 'var(--font-family)',
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+                  color: 'var(--color-primary)',
+                }}
+              >
+                {volume.toLocaleString('fr-FR')} kg
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Détail série par série */}
       {sets.length > 0 && (
         <div
           style={{
+            backgroundColor: 'var(--color-bg)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-3)',
             display: 'flex',
             flexDirection: 'column',
-            gap: 'var(--space-1)',
+            gap: 'var(--space-2)',
           }}
         >
           {sets.map((set, idx) => (
-            <p
+            <div
               key={idx}
               style={{
-                margin: 0,
-                fontFamily: 'var(--font-family)',
-                fontSize: 'var(--text-sm)',
-                color: 'var(--color-text)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
               }}
             >
-              <span style={{ color: 'var(--color-text-muted)' }}>
-                Série {set.set} :&nbsp;
+              {/* Numéro de série */}
+              <span
+                style={{
+                  fontFamily: 'var(--font-family)',
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--color-text-muted)',
+                  minWidth: '52px',
+                  flexShrink: 0,
+                }}
+              >
+                Série {set.set}
               </span>
-              {formatSetLine(set)}
-            </p>
+              {/* Données */}
+              <span
+                style={{
+                  fontFamily: 'var(--font-family)',
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+                  color: 'var(--color-text)',
+                }}
+              >
+                {formatSetLine(set)}
+              </span>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Comparaisons */}
-      {(exerciseHistory.vs_previous_kg_delta !== null ||
-        exerciseHistory.vs_same_phase_kg_delta !== null ||
-        exerciseHistory.avg_rir !== null) && (
+      {/* Comparaisons + RIR moyen */}
+      {hasDelta && (
         <div
           style={{
             borderTop: '1px solid var(--color-border)',
@@ -105,40 +179,41 @@ export function RecapExerciseCard({ exerciseHistory }: RecapExerciseCardProps) {
             gap: 'var(--space-1)',
           }}
         >
-          {exerciseHistory.vs_previous_kg_delta !== null && (
-            <p
-              style={{
-                margin: 0,
-                fontFamily: 'var(--font-family)',
-                fontSize: 'var(--text-xs)',
-                color: progColor,
-              }}
-            >
-              {progIcon} vs séance précédente :{' '}
-              {exerciseHistory.vs_previous_kg_delta >= 0 ? '+' : ''}
-              {exerciseHistory.vs_previous_kg_delta}kg
-            </p>
-          )}
+          {exerciseHistory.vs_previous_kg_delta !== null && (() => {
+            const { icon, color } = getDeltaStyle(exerciseHistory.vs_previous_kg_delta);
+            const delta = exerciseHistory.vs_previous_kg_delta;
+            return (
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: 'var(--font-family)',
+                  fontSize: 'var(--text-xs)',
+                  color,
+                }}
+              >
+                {icon} vs séance précédente :{' '}
+                {delta >= 0 ? '+' : ''}{delta} kg de volume
+              </p>
+            );
+          })()}
 
-          {exerciseHistory.vs_same_phase_kg_delta !== null && (
-            <p
-              style={{
-                margin: 0,
-                fontFamily: 'var(--font-family)',
-                fontSize: 'var(--text-xs)',
-                color:
-                  exerciseHistory.vs_same_phase_kg_delta > 0
-                    ? 'var(--color-success)'
-                    : exerciseHistory.vs_same_phase_kg_delta < 0
-                    ? 'var(--color-error)'
-                    : 'var(--color-text-muted)',
-              }}
-            >
-              {exerciseHistory.vs_same_phase_kg_delta >= 0 ? '↑' : '↓'} vs même phase (cycle -1) :{' '}
-              {exerciseHistory.vs_same_phase_kg_delta >= 0 ? '+' : ''}
-              {exerciseHistory.vs_same_phase_kg_delta}kg
-            </p>
-          )}
+          {exerciseHistory.vs_same_phase_kg_delta !== null && (() => {
+            const { icon, color } = getDeltaStyle(exerciseHistory.vs_same_phase_kg_delta);
+            const delta = exerciseHistory.vs_same_phase_kg_delta;
+            return (
+              <p
+                style={{
+                  margin: 0,
+                  fontFamily: 'var(--font-family)',
+                  fontSize: 'var(--text-xs)',
+                  color,
+                }}
+              >
+                {icon} vs même phase (cycle -1) :{' '}
+                {delta >= 0 ? '+' : ''}{delta} kg de volume
+              </p>
+            );
+          })()}
 
           {exerciseHistory.avg_rir !== null && (
             <p

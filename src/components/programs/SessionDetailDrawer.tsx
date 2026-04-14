@@ -64,6 +64,7 @@ export function SessionDetailDrawer({
         style={{
           width: '100%',
           maxHeight: '85vh',
+          marginBottom: '64px',
           backgroundColor: 'var(--color-surface)',
           borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
           padding: 'var(--space-6) var(--space-4)',
