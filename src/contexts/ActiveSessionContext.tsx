@@ -49,7 +49,7 @@ interface ActiveSessionContextValue {
   completeSet: (sessionExerciseId: string, setIndex: number, data: Omit<ActiveSetData, 'completed'>) => void;
   setCurrentExercise: (sessionExerciseId: string) => void;
   getExerciseState: (sessionExerciseId: string) => { sets: ActiveSetData[]; completed: boolean } | null;
-  endSession: (feeling: WorkoutFeeling) => Promise<{ data: string | null; error: string | null }>;
+  endSession: (feeling: WorkoutFeeling) => Promise<{ data: string | null; error: string | null; savedExercisesCount?: number; exerciseErrors?: string[] }>;
   abandonSession: () => void;
 }
 
@@ -168,10 +168,10 @@ export function ActiveSessionProvider({ children }: ActiveSessionProviderProps) 
   );
 
   /**
-   * Termine la séance, sauvegarde en base, retourne le sessionHistoryId.
+   * Termine la séance, sauvegarde en base, retourne le sessionHistoryId + métriques.
    */
   const endSession = useCallback(
-    async (feeling: WorkoutFeeling): Promise<{ data: string | null; error: string | null }> => {
+    async (feeling: WorkoutFeeling): Promise<{ data: string | null; error: string | null; savedExercisesCount?: number; exerciseErrors?: string[] }> => {
       if (!state || !user) return { data: null, error: 'Aucune séance active.' };
 
       setIsEnding(true);

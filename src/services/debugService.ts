@@ -202,6 +202,86 @@ export async function seedTestProgram(
   return { data: program, error: null };
 }
 
+// ─── TYPES DEBUG ──────────────────────────────────────────────────────────────
+
+/** Résumé d'une entrée exercise_history pour le debug */
+export interface ExerciseHistoryDebug {
+  id: string;
+  exercise_catalog_id: string | null;
+  user_custom_exercise_id: string | null;
+  input_type: string | null;
+  set_count: number;
+}
+
+/** Résumé d'une séance historique pour le debug */
+export interface SessionHistoryDebug {
+  id: string;
+  completed_at: string;
+  session_name: string | null;
+  cycle_phase: string | null;
+  feeling: string | null;
+  duration_minutes: number | null;
+  total_volume: number | null;
+  exercises: ExerciseHistoryDebug[];
+}
+
+/**
+ * Récupère toutes les séances et leurs exercices depuis Supabase pour le debug.
+ * Retourne les 20 séances les plus récentes.
+ */
+export async function getSessionHistoryDebug(
+  userId: string
+): Promise<{ data: SessionHistoryDebug[]; error: string | null }> {
+  // Récupère les séances
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('session_history')
+    .select('id, completed_at, session_id, cycle_phase, feeling, duration_minutes, total_volume')
+    .eq('user_id', userId)
+    .order('completed_at', { ascending: false })
+    .limit(20);
+
+  if (sessionsError) return { data: [], error: sessionsError.message };
+  if (!sessions || sessions.length === 0) return { data: [], error: null };
+
+  // Récupère les exercices pour toutes les séances en une seule requête
+  const sessionIds = sessions.map(s => s.id);
+  const { data: exercises, error: exError } = await supabase
+    .from('exercise_history')
+    .select('id, session_history_id, exercise_catalog_id, user_custom_exercise_id, input_type, set_details')
+    .in('session_history_id', sessionIds)
+    .eq('user_id', userId);
+
+  if (exError) return { data: [], error: exError.message };
+
+  // Groupe les exercices par session
+  const exBySession: Record<string, ExerciseHistoryDebug[]> = {};
+  for (const ex of exercises ?? []) {
+    const sid = ex.session_history_id as string;
+    if (!exBySession[sid]) exBySession[sid] = [];
+    const setDetails = ex.set_details as unknown[];
+    exBySession[sid].push({
+      id: ex.id,
+      exercise_catalog_id: ex.exercise_catalog_id,
+      user_custom_exercise_id: ex.user_custom_exercise_id,
+      input_type: ex.input_type,
+      set_count: Array.isArray(setDetails) ? setDetails.length : 0,
+    });
+  }
+
+  const result: SessionHistoryDebug[] = sessions.map(s => ({
+    id: s.id,
+    completed_at: s.completed_at,
+    session_name: s.session_id ?? null,
+    cycle_phase: s.cycle_phase,
+    feeling: s.feeling,
+    duration_minutes: s.duration_minutes,
+    total_volume: s.total_volume,
+    exercises: exBySession[s.id] ?? [],
+  }));
+
+  return { data: result, error: null };
+}
+
 // Type pour les données de health_data retournées
 export interface HealthDataDebug {
   id: string;

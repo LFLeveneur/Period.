@@ -36,7 +36,7 @@ export async function saveSession(
   exerciseNames: Record<string, string>,
   cyclePhase: CyclePhase | null,
   cycleDay: number | null
-): Promise<{ data: string | null; error: string | null }> {
+): Promise<{ data: string | null; error: string | null; savedExercisesCount?: number; exerciseErrors?: string[] }> {
   // Calcul des métriques
   const now = new Date();
   const durationMs = now.getTime() - state.startedAt.getTime();
@@ -46,7 +46,7 @@ export async function saveSession(
   const performance_level = scoreToPerformanceLevel(performance_score);
   const energy_score = FEELING_TO_SCORE[feeling];
 
-  const doSave = async (): Promise<{ data: string | null; error: string | null }> => {
+  const doSave = async (): Promise<{ data: string | null; error: string | null; savedExercisesCount?: number; exerciseErrors?: string[] }> => {
     // Étape 1 : INSERT session_history
     const { data: historyRow, error: historyError } = await supabase
       .from('session_history')
@@ -73,8 +73,17 @@ export async function saveSession(
     const sessionHistoryId = historyRow.id as string;
 
     // Étape 2 : INSERT exercise_history pour chaque exercice avec au moins 1 série complétée
-    for (const [sessionExerciseId, exState] of Object.entries(state.exercises)) {
+    const exerciseEntries = Object.entries(state.exercises);
+    console.log(`[saveSession] ${exerciseEntries.length} exercice(s) dans l'état`);
+
+    let savedCount = 0;
+    const exerciseErrors: string[] = [];
+
+    for (const [sessionExerciseId, exState] of exerciseEntries) {
       const completedSets = exState.sets.filter(s => s.completed);
+      console.log(
+        `[saveSession] exercice ${sessionExerciseId} : ${exState.sets.length} séries total, ${completedSets.length} validée(s)`
+      );
       // EC-24 : pas d'exercise_history si aucune série complétée
       if (completedSets.length === 0) continue;
 
@@ -104,9 +113,18 @@ export async function saveSession(
         });
 
       if (exHistError) {
-        console.error('[sessionHistoryService] saveSession exercise_history', exHistError);
+        console.error('[saveSession] exercise_history INSERT échoué :', exHistError);
+        exerciseErrors.push(`${exerciseNames[sessionExerciseId] ?? sessionExerciseId} : ${exHistError.message}`);
         // On continue — on ne bloque pas pour un exercice individuel
+      } else {
+        savedCount++;
+        console.log(`[saveSession] exercice sauvegardé (${completedSets.length} séries)`);
       }
+    }
+
+    console.log(`[saveSession] résultat : ${savedCount}/${exerciseEntries.length} exercice(s) sauvegardé(s)`);
+    if (exerciseErrors.length > 0) {
+      console.error('[saveSession] erreurs exercise_history :', exerciseErrors);
     }
 
     // Étape 3 : UPDATE program_sessions → status = 'completed'
@@ -136,7 +154,7 @@ export async function saveSession(
         .eq('id', sessionHistoryId);
     }
 
-    return { data: sessionHistoryId, error: null };
+    return { data: sessionHistoryId, error: null, savedExercisesCount: savedCount, exerciseErrors };
   };
 
   // EC-25 : retry automatique 1 fois
@@ -488,6 +506,61 @@ export async function getSessionHistoryDetail(
   return { data: detail, error: null };
 }
 
+// ─── Historique complet d'un exercice ────────────────────────────────────────
+
+/** Résultat de getExerciseHistoryFull : entrées + nom de l'exercice */
+export interface ExerciseHistoryFull {
+  exerciseName: string;
+  entries: ExerciseHistoryEntry[];
+}
+
+/**
+ * Récupère l'historique complet d'un exercice spécifique (jusqu'à 100 entrées).
+ * Inclut le nom de l'exercice, la phase du cycle et les set_details pour chaque entrée.
+ * Utilisé par ExerciseHistoryPage.
+ */
+export async function getExerciseHistoryFull(
+  userId: string,
+  catalogId: string | null,
+  customId: string | null
+): Promise<{ data: ExerciseHistoryFull | null; error: string | null }> {
+  // Récupère le nom de l'exercice depuis la source appropriée
+  let exerciseName = 'exercice supprimé';
+
+  if (catalogId) {
+    const { data: catalogRow } = await supabase
+      .from('exercise_catalog')
+      .select('name')
+      .eq('id', catalogId)
+      .maybeSingle();
+    if (catalogRow?.['name']) exerciseName = catalogRow['name'] as string;
+  } else if (customId) {
+    const { data: customRow } = await supabase
+      .from('user_custom_exercises')
+      .select('name')
+      .eq('id', customId)
+      .maybeSingle();
+    if (customRow?.['name']) exerciseName = customRow['name'] as string;
+  }
+
+  // Récupère toutes les entrées d'historique (100 max)
+  const raw = await getExerciseHistoryRaw(userId, catalogId, customId, 100);
+
+  const entries: ExerciseHistoryEntry[] = raw.map(r => ({
+    id: r.id,
+    session_history_id: r.session_history_id,
+    exercise_catalog_id: r.exercise_catalog_id,
+    user_custom_exercise_id: r.user_custom_exercise_id,
+    set_details: r.set_details,
+    input_type: r.input_type as ExerciseHistoryEntry['input_type'],
+    completed_at: r.completed_at,
+    cycle_phase: r.cycle_phase,
+    cycle_day: r.cycle_day,
+  }));
+
+  return { data: { exerciseName, entries }, error: null };
+}
+
 /**
  * Récupère la session_history la plus récente pour un program_session donné.
  * Utilisé pour EC-27 (accès direct /recap sans state en mémoire).
@@ -665,41 +738,80 @@ export async function getHistoryDetail(
       : victoriesRaw
     : [];
 
-  const exerciseDetails: ExerciseHistoryDetail[] = (exercises ?? []).map((ex: Record<string, unknown>) => {
-    const catalog = ex['exercise_catalog'] as Record<string, unknown> | null;
-    const custom = ex['user_custom_exercise'] as Record<string, unknown> | null;
-    const exerciseName =
-      (catalog?.['name'] as string) ?? (custom?.['name'] as string) ?? 'exercice supprimé';
+  const histDetailUserId = sh['user_id'] as string;
+  const histDetailPhase = sh['cycle_phase'] as CyclePhase | null;
+  const histDetailSessionId = sh['id'] as string;
 
-    const rawSetDetails2 = ex['set_details'];
-    const setDetails: SetDetails[] | null = Array.isArray(rawSetDetails2) ? (rawSetDetails2 as SetDetails[]) : null;
-    const isLegacy = false;
+  /** Calcule le volume total d'un tableau de SetDetails */
+  function computeVolumeHist(setDetails: SetDetails[]): number {
+    return setDetails.reduce((sum, s) => {
+      return sum + (s.actual?.weight ?? 0) * (s.actual?.reps ?? 0);
+    }, 0);
+  }
 
-    // avg_rir
-    let avgRir: number | null = null;
-    if (!isLegacy && setDetails && setDetails.length > 0) {
-      const rirs = setDetails
-        .map((s: SetDetails) => s.actual?.rir)
-        .filter((r): r is number => r !== undefined && r !== null);
-      if (rirs.length > 0) {
-        avgRir = Math.round((rirs.reduce((sum: number, r: number) => sum + r, 0) / rirs.length) * 10) / 10;
+  const exerciseDetails: ExerciseHistoryDetail[] = await Promise.all(
+    (exercises ?? []).map(async (ex: Record<string, unknown>) => {
+      const catalog = ex['exercise_catalog'] as Record<string, unknown> | null;
+      const custom = ex['user_custom_exercise'] as Record<string, unknown> | null;
+      const exerciseName =
+        (catalog?.['name'] as string) ?? (custom?.['name'] as string) ?? 'exercice supprimé';
+
+      const rawSetDetails2 = ex['set_details'];
+      const setDetails: SetDetails[] | null = Array.isArray(rawSetDetails2) ? (rawSetDetails2 as SetDetails[]) : null;
+
+      // avg_rir
+      let avgRir: number | null = null;
+      if (setDetails && setDetails.length > 0) {
+        const rirs = setDetails
+          .map((s: SetDetails) => s.actual?.rir)
+          .filter((r): r is number => r !== undefined && r !== null);
+        if (rirs.length > 0) {
+          avgRir = Math.round((rirs.reduce((sum: number, r: number) => sum + r, 0) / rirs.length) * 10) / 10;
+        }
       }
-    }
 
-    return {
-      id: ex['id'] as string,
-      exercise_catalog_id: ex['exercise_catalog_id'] as string | null,
-      user_custom_exercise_id: ex['user_custom_exercise_id'] as string | null,
-      exercise_name: exerciseName,
-      input_type: ex['input_type'] as ExerciseHistoryDetail['input_type'],
-      set_details: setDetails,
-      progression: (ex['progression'] as 'up' | 'down' | 'stable' | null) ?? null,
-      vs_previous_kg_delta: null,
-      vs_same_phase_kg_delta: null,
-      avg_rir: avgRir,
-      isLegacy,
-    };
-  });
+      // Volume de cette séance pour cet exercice
+      const currentVolume = setDetails ? computeVolumeHist(setDetails) : 0;
+
+      // Deltas vs séance précédente et vs même phase
+      let vsPreviousKgDelta: number | null = null;
+      let vsSamePhaseKgDelta: number | null = null;
+
+      if (currentVolume > 0) {
+        const catalogId = ex['exercise_catalog_id'] as string | null;
+        const customId = ex['user_custom_exercise_id'] as string | null;
+        const prevHist = await getExerciseHistoryRaw(histDetailUserId, catalogId, customId, 10);
+        const filtered = prevHist.filter(h => h.session_history_id !== histDetailSessionId);
+
+        const prevEntry = filtered[0];
+        if (prevEntry?.set_details && prevEntry.set_details.length > 0) {
+          const prevVol = computeVolumeHist(prevEntry.set_details);
+          if (prevVol > 0) vsPreviousKgDelta = Math.round((currentVolume - prevVol) * 10) / 10;
+        }
+
+        if (histDetailPhase) {
+          const samePhaseEntry = filtered.find(h => h.cycle_phase === histDetailPhase);
+          if (samePhaseEntry?.set_details && samePhaseEntry.set_details.length > 0) {
+            const sameVol = computeVolumeHist(samePhaseEntry.set_details);
+            if (sameVol > 0) vsSamePhaseKgDelta = Math.round((currentVolume - sameVol) * 10) / 10;
+          }
+        }
+      }
+
+      return {
+        id: ex['id'] as string,
+        exercise_catalog_id: ex['exercise_catalog_id'] as string | null,
+        user_custom_exercise_id: ex['user_custom_exercise_id'] as string | null,
+        exercise_name: exerciseName,
+        input_type: ex['input_type'] as ExerciseHistoryDetail['input_type'],
+        set_details: setDetails,
+        progression: (ex['progression'] as 'up' | 'down' | 'stable' | null) ?? null,
+        vs_previous_kg_delta: vsPreviousKgDelta,
+        vs_same_phase_kg_delta: vsSamePhaseKgDelta,
+        avg_rir: avgRir,
+      };
+    })
+  );
 
   const detail: SessionHistoryDetail = {
     id: sh['id'] as string,

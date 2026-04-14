@@ -43,6 +43,7 @@ export function SessionActivePage() {
   // État UI
   const [feelingOpen, setFeelingOpen] = useState(false);
   const [abandonOpen, setAbandonOpen] = useState(false);
+  const [noSetsWarningOpen, setNoSetsWarningOpen] = useState(false);
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(60);
 
@@ -170,6 +171,15 @@ export function SessionActivePage() {
       return;
     }
 
+    // Avertit si des exercices n'ont pas pu être sauvegardés (erreur Supabase)
+    if (result.exerciseErrors && result.exerciseErrors.length > 0) {
+      showToast(
+        `${result.exerciseErrors.length} exercice(s) non sauvegardé(s) — vérifie ta connexion.`,
+        'error'
+      );
+      console.error('[SessionActivePage] exercices non sauvegardés :', result.exerciseErrors);
+    }
+
     // Track la séance terminée avec succès
     const durationMinutes = state ? Math.floor((Date.now() - state.startedAt.getTime()) / 60000) : 0;
     analytics.track('session_completed', {
@@ -177,6 +187,7 @@ export function SessionActivePage() {
       duration_minutes: durationMinutes,
       feeling,
       current_phase: currentPhaseDisplay,
+      saved_exercises_count: result.savedExercisesCount ?? 0,
     });
 
     navigate(`/session/${id}/recap`, {
@@ -473,6 +484,21 @@ export function SessionActivePage() {
         tes données ne seront pas sauvegardées.
       </Modal>
 
+      {/* Modale avertissement — aucune série validée */}
+      <Modal
+        isOpen={noSetsWarningOpen}
+        title="aucune série validée"
+        confirmLabel="terminer quand même"
+        cancelLabel="revenir à la séance"
+        onConfirm={() => {
+          setNoSetsWarningOpen(false);
+          setFeelingOpen(true);
+        }}
+        onCancel={() => setNoSetsWarningOpen(false)}
+      >
+        tu n'as validé aucune série. si tu termines maintenant, aucun exercice ne sera enregistré dans ton historique.
+      </Modal>
+
       {/* Bouton "Terminer la séance" sticky en bas — CTA principal */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -493,7 +519,17 @@ export function SessionActivePage() {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setFeelingOpen(true)}
+          onClick={() => {
+            // Garde : au moins une série validée quelque part ?
+            const hasAnySets = Object.values(state?.exercises ?? {}).some(ex =>
+              ex.sets.some(s => s.completed)
+            );
+            if (!hasAnySets) {
+              setNoSetsWarningOpen(true);
+            } else {
+              setFeelingOpen(true);
+            }
+          }}
           style={{
             width: '100%',
             padding: 'var(--space-4) var(--space-5)',

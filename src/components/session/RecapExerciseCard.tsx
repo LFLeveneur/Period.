@@ -1,6 +1,8 @@
 // Card affichant le détail d'un exercice dans le récap de séance
+import { useNavigate } from 'react-router';
 import { RirInfo } from '@/components/ui/RirInfo';
 import type { ExerciseHistoryDetail, SetDetails } from '@/types/workout';
+import type { ExerciseHistoryNavState } from '@/pages/history/ExerciseHistoryPage';
 
 interface RecapExerciseCardProps {
   exerciseHistory: ExerciseHistoryDetail;
@@ -42,12 +44,23 @@ function getDeltaStyle(delta: number): { icon: string; color: string } {
 }
 
 export function RecapExerciseCard({ exerciseHistory }: RecapExerciseCardProps) {
+  const navigate = useNavigate();
   const sets = exerciseHistory.set_details ?? [];
   const volume = sets.length > 0 ? computeExerciseVolume(sets) : 0;
   const hasDelta =
     exerciseHistory.vs_previous_kg_delta !== null ||
     exerciseHistory.vs_same_phase_kg_delta !== null ||
     exerciseHistory.avg_rir !== null;
+
+  /** Navigue vers l'historique complet de cet exercice */
+  const handleViewHistory = () => {
+    const state: ExerciseHistoryNavState = {
+      catalogId: exerciseHistory.exercise_catalog_id,
+      customId: exerciseHistory.user_custom_exercise_id,
+      exerciseName: exerciseHistory.exercise_name,
+    };
+    navigate('/history/exercise', { state });
+  };
 
   return (
     <div
@@ -61,7 +74,7 @@ export function RecapExerciseCard({ exerciseHistory }: RecapExerciseCardProps) {
         boxShadow: 'var(--shadow-sm)',
       }}
     >
-      {/* En-tête — nom + résumé volume */}
+      {/* En-tête — nom + résumé volume + lien historique */}
       <div
         style={{
           display: 'flex',
@@ -70,18 +83,43 @@ export function RecapExerciseCard({ exerciseHistory }: RecapExerciseCardProps) {
           gap: 'var(--space-2)',
         }}
       >
-        <h3
+        {/* Nom cliquable → historique de l'exercice */}
+        <button
+          onClick={handleViewHistory}
           style={{
-            margin: 0,
-            fontFamily: 'var(--font-family)',
-            fontSize: 'var(--text-base)',
-            fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
-            color: 'var(--color-text)',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            textAlign: 'left',
             flex: 1,
           }}
         >
-          {exerciseHistory.exercise_name}
-        </h3>
+          <h3
+            style={{
+              margin: 0,
+              fontFamily: 'var(--font-family)',
+              fontSize: 'var(--text-base)',
+              fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+              color: 'var(--color-text)',
+              textDecoration: 'underline',
+              textDecorationColor: 'var(--color-border)',
+              textUnderlineOffset: '3px',
+            }}
+          >
+            {exerciseHistory.exercise_name}
+          </h3>
+          <span
+            style={{
+              fontFamily: 'var(--font-family)',
+              fontSize: '10px',
+              color: 'var(--color-text-muted)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            voir l'historique →
+          </span>
+        </button>
 
         {/* Résumé compact : X séries · Y kg total */}
         {sets.length > 0 && (

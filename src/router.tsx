@@ -23,6 +23,7 @@ import { HomePage } from '@/pages/home/HomePage';
 import { CalendarPage } from '@/pages/calendar/CalendarPage';
 import { HistoryPage } from '@/pages/history/HistoryPage';
 import { HistoryDetailPage } from '@/pages/history/HistoryDetailPage';
+import { ExerciseHistoryPage } from '@/pages/history/ExerciseHistoryPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { ProgramsPage } from '@/pages/programs/ProgramsPage';
 import { ProgramImportPage } from '@/pages/programs/ProgramImportPage';
@@ -63,6 +64,7 @@ export function AppRouter() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/history/:id" element={<HistoryDetailPage />} />
+          <Route path="/history/exercise" element={<ExerciseHistoryPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/programs" element={<ProgramsPage />} />
           <Route path="/programs/import" element={<ProgramImportPage />} />

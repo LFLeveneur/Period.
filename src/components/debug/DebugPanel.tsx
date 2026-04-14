@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ToastContext } from '@/components/ui/Toast';
 import * as debugService from '@/services/debugService';
-import type { HealthDataDebug } from '@/services/debugService';
+import type { HealthDataDebug, SessionHistoryDebug } from '@/services/debugService';
 import type { Profile } from '@/types/auth';
 import type { Program } from '@/types/workout';
 
@@ -29,6 +29,10 @@ export function DebugPanel() {
     activeProgram: null,
   });
 
+  // Historique séances en base
+  const [sessionHistoryDebug, setSessionHistoryDebug] = useState<SessionHistoryDebug[]>([]);
+  const [sessionHistoryLoading, setSessionHistoryLoading] = useState(false);
+
   // Rafraîchit les infos du debug
   const refreshDebugInfo = async () => {
     if (!user) return;
@@ -41,6 +45,19 @@ export function DebugPanel() {
         healthData: result.healthData,
         activeProgram: result.activeProgram,
       });
+    }
+  };
+
+  /** Charge l'historique des séances + exercices depuis Supabase */
+  const loadSessionHistoryDebug = async () => {
+    if (!user) return;
+    setSessionHistoryLoading(true);
+    const { data, error } = await debugService.getSessionHistoryDebug(user.id);
+    setSessionHistoryLoading(false);
+    if (error) {
+      showToast(`Erreur historique : ${error}`, 'error');
+    } else {
+      setSessionHistoryDebug(data);
     }
   };
 
@@ -430,6 +447,78 @@ export function DebugPanel() {
           <button onClick={handleSeedProgram} style={debugButtonStyle} disabled={isLoading}>
             Seed programme de test
           </button>
+
+          {/* ─── SÉANCES EN BASE ─────────────────────────────────────── */}
+          <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold', marginTop: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>
+            🗄️ Séances en base (20 dernières)
+          </h2>
+
+          <button
+            onClick={loadSessionHistoryDebug}
+            style={{ ...debugButtonStyle, backgroundColor: '#e8f4fd', borderColor: '#90cdf4' }}
+            disabled={sessionHistoryLoading}
+          >
+            {sessionHistoryLoading ? '⏳ Chargement...' : '🔍 Charger les séances'}
+          </button>
+
+          {sessionHistoryDebug.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+              {sessionHistoryDebug.map(session => {
+                const date = new Date(session.completed_at).toLocaleDateString('fr-FR', {
+                  day: '2-digit', month: '2-digit', year: '2-digit',
+                  hour: '2-digit', minute: '2-digit',
+                });
+                const hasExercises = session.exercises.length > 0;
+                return (
+                  <div
+                    key={session.id}
+                    style={{
+                      padding: 'var(--space-2) var(--space-3)',
+                      backgroundColor: hasExercises ? '#f0fff4' : '#fff5f5',
+                      border: `1px solid ${hasExercises ? '#9ae6b4' : '#feb2b2'}`,
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 'var(--text-xs)',
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {/* Ligne 1 : date + statut exercices */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 'bold' }}>{date}</span>
+                      <span style={{ color: hasExercises ? '#276749' : '#c53030', fontWeight: 'bold' }}>
+                        {hasExercises ? `✓ ${session.exercises.length} exercice(s)` : '✗ aucun exercice'}
+                      </span>
+                    </div>
+                    {/* Ligne 2 : phase + ressenti + volume */}
+                    <div style={{ color: '#555', marginBottom: '4px' }}>
+                      phase: {session.cycle_phase ?? '—'} · ressenti: {session.feeling ?? '—'} · volume: {session.total_volume ?? '—'} kg
+                    </div>
+                    {/* Ligne 3 : ID (court) */}
+                    <div style={{ color: '#888', fontSize: '10px', wordBreak: 'break-all' }}>
+                      id: {session.id}
+                    </div>
+                    {/* Détail des exercices */}
+                    {hasExercises && (
+                      <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #c6f6d5' }}>
+                        {session.exercises.map((ex, idx) => (
+                          <div key={ex.id} style={{ color: '#276749', fontSize: '10px' }}>
+                            {idx + 1}. {ex.input_type ?? 'type?'} · {ex.set_count} série(s)
+                            {ex.exercise_catalog_id && ` · catalog: ${ex.exercise_catalog_id.slice(0, 8)}…`}
+                            {ex.user_custom_exercise_id && ` · custom: ${ex.user_custom_exercise_id.slice(0, 8)}…`}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {sessionHistoryDebug.length === 0 && !sessionHistoryLoading && (
+            <p style={{ fontSize: 'var(--text-xs)', color: '#888', fontStyle: 'italic', marginTop: 'var(--space-1)' }}>
+              Clique sur "Charger" pour voir les données Supabase.
+            </p>
+          )}
 
           {/* ─── NAVIGATION RAPIDE ──────────────────────────────────── */}
           <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold', marginTop: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>
