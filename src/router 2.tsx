@@ -29,9 +29,6 @@ import { ProgramImportPage } from '@/pages/programs/ProgramImportPage';
 import { ProgramDetailPage } from '@/pages/programs/ProgramDetailPage';
 import { ProgramEditPage } from '@/pages/programs/ProgramEditPage';
 
-// Pages admin
-import { AnalyticsPage } from '@/pages/Admin/AnalyticsPage';
-
 // Pages immersives — auth requise, sans bottom nav
 import { ProgramNewPage } from '@/pages/programs/ProgramNewPage';
 import { ExercisesPage } from '@/pages/exercises/ExercisesPage';
@@ -69,9 +66,6 @@ export function AppRouter() {
           <Route path="/programs/:id" element={<ProgramDetailPage />} />
           <Route path="/programs/:id/edit" element={<ProgramEditPage />} />
         </Route>
-
-        {/* Route admin — accès réservé aux utilisatrices avec is_admin = true */}
-        <Route path="/admin/analytics" element={<AnalyticsPage />} />
 
         {/* Routes immersives — auth + onboarding requis, sans bottom nav */}
         <Route element={<ImmersiveLayout />}>

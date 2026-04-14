@@ -117,12 +117,6 @@ src/
 | `docs/13-roadmap.md` | Phases de dev dans l'ordre, dépendances |
 | `docs/14-demo-script.md` | Script démo — écran par écran |
 
-### ANALYTICS
-
-| Fichier | Contenu |
-|---------|---------|
-| `docs/16-analytics.md` | Tracking KPI complet : events, DB, service, dashboard admin, règles |
-
 ### RÈGLES DE CODE
 
 | Fichier | Contenu |

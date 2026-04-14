@@ -5,10 +5,13 @@ import { useNavigate } from 'react-router';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { PageTransition } from '@/components/layout/PageTransition';
+import { usePageTracking } from '@/hooks/usePageTracking';
 
 export function AppLayout() {
   const { user, profile, loading } = useAuthContext();
   const navigate = useNavigate();
+  // Track les vues de page dans les routes protégées
+  usePageTracking();
 
   useEffect(() => {
     if (!loading) {

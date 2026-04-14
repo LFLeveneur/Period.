@@ -31,6 +31,7 @@ import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Modal } from '@/components/ui/Modal';
 import { ExerciseFormSheet } from '@/components/exercises/ExerciseFormSheet';
+import { trackEvent } from '@/services/analyticsService';
 
 // ─── Types locaux du brouillon ────────────────────────────────────────────────
 
@@ -821,6 +822,8 @@ export function ProgramNewPage() {
     // Efface le brouillon après succès
     localStorage.removeItem(DRAFT_STORAGE_KEY);
     showToast('programme créé 🖤', 'success');
+    // Track la création de programme — one-time
+    trackEvent('training_filled', { sessions_count: sessionsInput.length });
     navigate(`/programs/${programId}`, { replace: true });
   }
 

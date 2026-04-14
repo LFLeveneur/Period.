@@ -184,82 +184,9 @@ La base ne stocke que 4 phases. `luteal_early` et `luteal_late` sont uniquement 
 | `session_exercises` | ✅ via join | Exercices planifiés dans une séance |
 | `session_history` | ✅ user_id | Séances complétées |
 | `exercise_history` | ✅ user_id | Performances par exercice lors d'une séance |
-| `user_settings` | ✅ user_id | Paramètres clé-valeur + flags one-time analytics (clé `event_tracked_X`) |
-| `events` | ✅ user_id | Events analytics (insert own + select admin) |
-| `feedback` | ✅ user_id | Feedbacks qualitatifs (insert own + select admin) |
+| `user_settings` | ✅ user_id | Paramètres clé-valeur (jours d'entraînement préférés...) |
 
 **Règle importante :** Un exercice peut venir de `exercise_catalog` OU de `user_custom_exercises` — jamais les deux en même temps. Les deux colonnes `exercise_catalog_id` et `user_custom_exercise_id` existent dans `session_exercises` et `exercise_history`.
-
----
-
-## Analytics & Tracking — référence rapide
-
-### Architecture
-
-Deux couches de tracking coexistent :
-- **PostHog** (`src/lib/analytics.ts`) — tracking produit en production uniquement, côté client
-- **Supabase** (`src/services/analyticsService.ts`) — tracking KPI persistant, base de la démo
-
-Pour les KPIs, toujours passer par `analyticsService.ts`. Ne jamais appeler PostHog pour les KPIs.
-
-### Events disponibles
-
-| Event | Mode | Déclenché où |
-|-------|------|--------------|
-| `signup_started` | one-time | `SignupPage` — au mount |
-| `onboarding_completed` | one-time | `OnboardingPage` — fin step 2 (sans cycle) ou step 3 (avec cycle) |
-| `cycle_filled` | one-time | `OnboardingPage` — fin step 3, après `saveHealthData()` |
-| `training_filled` | one-time | `ProgramNewPage` — après `createProgram()` réussi |
-| `session_logged` | **répété** | `SessionRecapPage` — au chargement du récap |
-| `page_viewed` | **répété** | `AppLayout` via `usePageTracking()` — à chaque navigation |
-| `feedback_submitted` | one-time | `analyticsService.submitFeedback()` — automatique |
-
-**One-time** = tracké une seule fois par utilisatrice (flag dans `user_settings`, clé `event_tracked_[eventName]`).
-**Répété** = chaque appel insère une nouvelle ligne dans `events`.
-
-### Pattern d'appel
-
-```ts
-import { trackEvent } from '@/services/analyticsService';
-
-// One-time — ignoré si déjà tracké pour cette utilisatrice
-await trackEvent('cycle_filled', { cycle_length: 28 });
-
-// Répété — toujours inséré
-trackEvent('session_logged', { phase: 'follicular', duration_minutes: 45, feeling: 'solid' });
-// Pas besoin d'await — fire-and-forget, erreur non bloquante
-```
-
-### Feedback qualitatif
-
-```ts
-import { submitFeedback } from '@/services/analyticsService';
-import { FeedbackModal } from '@/components/FeedbackModal';
-
-// Ouvrir la modal dans n'importe quelle page :
-{showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
-
-// La modal appelle submitFeedback() + trackEvent('feedback_submitted') automatiquement
-```
-
-### Dashboard admin
-
-- **Route :** `/admin/analytics`
-- **Accès :** `profiles.is_admin = true` (RLS + guard dans le composant)
-- **Activer un compte admin :**
-  ```sql
-  UPDATE profiles SET is_admin = true WHERE user_id = '<uuid>';
-  ```
-- Affiche : activation (5 KPIs), rétention (7j / 30j / total), phases du cycle, feedbacks
-
-### Règles
-
-```
-❌ Jamais d'appel analytics depuis un service métier — seulement depuis les pages/hooks
-❌ Jamais de données personnelles dans metadata (pas d'email, pas de nom)
-✅ trackEvent() est fire-and-forget — pas besoin d'await sauf si one-time dans un flow critique
-✅ profiles.is_admin est false par défaut — à activer manuellement en base
-```
 
 ---
 
@@ -342,9 +269,6 @@ Coach IA · Notifications push · Analyse musculaire · Export RGPD · Partage p
 - `.claude/docs/12-metrics.md` — KPIs, events à tracker
 - `.claude/docs/13-roadmap.md` — Phases détaillées, tâches, définition de "done"
 - `.claude/docs/14-demo-script.md` — Script démo écran par écran
-
-### Analytics
-- `.claude/docs/16-analytics.md` — Tracking KPI complet : events, DB, service, dashboard admin, règles
 
 ### Conventions
 - `.claude/rules/code-style.md` — TypeScript, nommage, structure des composants

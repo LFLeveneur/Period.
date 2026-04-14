@@ -20,6 +20,7 @@ export interface Profile {
   cycle_tracking: boolean | null;
   avatar_url: string | null;
   onboarding_completed: boolean;
+  is_admin: boolean;
   created_at: string;
   updated_at: string;
 }

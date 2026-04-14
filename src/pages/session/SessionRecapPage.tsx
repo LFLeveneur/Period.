@@ -11,6 +11,7 @@ import { VictoryCard } from '@/components/session/VictoryCard';
 import { RecapExerciseCard } from '@/components/session/RecapExerciseCard';
 import { FEELING_LABELS, RECAP_MESSAGES } from '@/constants/session';
 import { PHASE_DISPLAY_CONFIG } from '@/utils/phaseConfig';
+import { trackEvent } from '@/services/analyticsService';
 import type { SessionHistoryDetail } from '@/types/workout';
 import type { CyclePhaseDisplay } from '@/types/cycle';
 
@@ -62,6 +63,12 @@ export function SessionRecapPage() {
 
       setDetail(data);
       setLoading(false);
+      // Track la séance loggée avec la phase du cycle en metadata
+      trackEvent('session_logged', {
+        phase: data.cycle_phase ?? null,
+        duration_minutes: data.duration_minutes ?? null,
+        feeling: data.feeling ?? null,
+      });
     }
 
     load();

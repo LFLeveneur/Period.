@@ -1,0 +1,88 @@
+/* Variables de design — doit être importé en premier */
+@import './styles/variables.css';
+
+/* Tailwind CSS v4 */
+@import "tailwindcss";
+
+/* Reset minimal */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Animation spinner pour les boutons en chargement */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Animation d'apparition décalée — utilisée sur la page de révélation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animation d'entrée depuis le bas — modals, bottom sheets, toasts */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Utilitaire feedback tactile — appliqué sur tous les éléments interactifs */
+.tappable {
+  transition: transform var(--duration-fast);
+  cursor: pointer;
+}
+.tappable:active {
+  transform: scale(0.95);
+}
+
+/* ─── Transitions de navigation entre pages ─────────────────────────────── */
+
+/* Fondu — bottom nav et retours */
+@keyframes pageFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Slide depuis la droite — drill-down (tap CTA, accès détail) */
+@keyframes pageSlideInFromRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Slide depuis la gauche — retour arrière */
+@keyframes pageSlideInFromLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Fade + légère scale — onboarding → reveal */
+@keyframes pageScaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}

@@ -1,0 +1,438 @@
+// Page dashboard analytics — réservée aux admins (is_admin = true dans profiles)
+// Affiche les KPIs d'activation, de rétention, la répartition par phase et les feedbacks
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { useAuthContext } from '@/contexts/AuthContext';
+import {
+  getActivationKpis,
+  getRetentionKpis,
+  getPhaseDistribution,
+  getFeedbackList,
+} from '@/services/analyticsService';
+import type {
+  ActivationKpis,
+  RetentionKpis,
+  PhaseDistribution,
+  FeedbackEntry,
+} from '@/types/analytics';
+
+/** Carte KPI générique */
+function KpiCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
+  return (
+    <div
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        borderRadius: 'var(--radius-xl)',
+        padding: 'var(--space-5)',
+        boxShadow: 'var(--shadow-md)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-2)',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 'var(--text-xs)',
+          fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+          color: 'var(--color-text-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 'var(--text-3xl)',
+          fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+          color: 'var(--color-text)',
+          lineHeight: 1,
+        }}
+      >
+        {value}
+      </span>
+      {sub && (
+        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{sub}</span>
+      )}
+    </div>
+  );
+}
+
+/** Label lisible pour une phase */
+function phaseLabel(phase: string): string {
+  const labels: Record<string, string> = {
+    menstrual: 'Menstruation',
+    follicular: 'Folliculaire',
+    ovulation: 'Ovulation',
+    luteal: 'Lutéale',
+    luteal_early: 'Lutéale (début)',
+    luteal_late: 'Lutéale (fin)',
+  };
+  return labels[phase] ?? phase;
+}
+
+export function AnalyticsPage() {
+  const { user, profile, loading: authLoading } = useAuthContext();
+  const navigate = useNavigate();
+
+  const [activation, setActivation] = useState<ActivationKpis | null>(null);
+  const [retention, setRetention] = useState<RetentionKpis | null>(null);
+  const [phases, setPhases] = useState<PhaseDistribution[] | null>(null);
+  const [feedbacks, setFeedbacks] = useState<FeedbackEntry[] | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Guard admin — redirige si non admin
+  useEffect(() => {
+    if (!authLoading && (!user || !profile?.is_admin)) {
+      navigate('/home', { replace: true });
+    }
+  }, [user, profile, authLoading, navigate]);
+
+  // Chargement des données
+  useEffect(() => {
+    if (!profile?.is_admin) return;
+
+    async function loadData() {
+      setDataLoading(true);
+
+      const [actRes, retRes, phaseRes, fbRes] = await Promise.all([
+        getActivationKpis(),
+        getRetentionKpis(),
+        getPhaseDistribution(),
+        getFeedbackList(30),
+      ]);
+
+      // Affiche la première erreur rencontrée
+      const firstError =
+        actRes.error ?? retRes.error ?? phaseRes.error ?? fbRes.error ?? null;
+      setError(firstError);
+
+      setActivation(actRes.data);
+      setRetention(retRes.data);
+      setPhases(phaseRes.data);
+      setFeedbacks(fbRes.data);
+      setDataLoading(false);
+    }
+
+    loadData();
+  }, [profile?.is_admin]);
+
+  if (authLoading || !user || !profile?.is_admin) return null;
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: 'var(--color-bg)',
+        padding: 'var(--space-6) var(--space-4)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-8)',
+      }}
+    >
+      {/* En-tête */}
+      <div>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 'var(--text-3xl)',
+            fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+            color: 'var(--color-text)',
+          }}
+        >
+          analytics 📊
+        </h1>
+        <p style={{ margin: 'var(--space-1) 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+          tableau de bord période.
+        </p>
+      </div>
+
+      {/* Erreur globale */}
+      {error && (
+        <div
+          style={{
+            padding: 'var(--space-4)',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: 'var(--color-error)',
+            color: 'var(--color-text-light)',
+            fontSize: 'var(--text-sm)',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {dataLoading ? (
+        /* Squelettes de chargement */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={{
+                height: '80px',
+                borderRadius: 'var(--radius-xl)',
+                backgroundColor: 'var(--color-border)',
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* ─── Section Activation ─── */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 'var(--text-base)',
+                fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+                color: 'var(--color-text)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              Activation
+            </h2>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 'var(--space-3)',
+              }}
+            >
+              <KpiCard label="Inscriptions" value={activation?.signup_started ?? 0} />
+              <KpiCard label="Onboarding ✓" value={activation?.onboarding_completed ?? 0} />
+              <KpiCard label="Cycles remplis" value={activation?.cycle_filled ?? 0} />
+              <KpiCard label="Programmes créés" value={activation?.training_filled ?? 0} />
+              <KpiCard
+                label="Séances loggées"
+                value={activation?.session_logged ?? 0}
+                sub="toutes les séances"
+              />
+            </div>
+          </section>
+
+          {/* ─── Section Rétention ─── */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 'var(--text-base)',
+                fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+                color: 'var(--color-text)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              Rétention
+            </h2>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 'var(--space-3)',
+              }}
+            >
+              <KpiCard
+                label="Actives 7j"
+                value={retention?.active_7d ?? 0}
+                sub="utilisatrices"
+              />
+              <KpiCard
+                label="Actives 30j"
+                value={retention?.active_30d ?? 0}
+                sub="utilisatrices"
+              />
+              <KpiCard
+                label="Total"
+                value={retention?.total_users ?? 0}
+                sub="inscrites"
+              />
+            </div>
+          </section>
+
+          {/* ─── Section Phases du cycle ─── */}
+          {phases && phases.length > 0 && (
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <h2
+                style={{
+                  margin: 0,
+                  fontSize: 'var(--text-base)',
+                  fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+                  color: 'var(--color-text)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                }}
+              >
+                Séances par phase
+              </h2>
+              <div
+                style={{
+                  backgroundColor: 'var(--color-surface)',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: 'var(--space-5)',
+                  boxShadow: 'var(--shadow-md)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-3)',
+                }}
+              >
+                {phases.map(({ phase, count }) => {
+                  const total = phases.reduce((s, p) => s + p.count, 0);
+                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                  const barColor = `var(--color-${phase === 'luteal_early' || phase === 'luteal_late' ? 'luteal' : phase})`;
+
+                  return (
+                    <div key={phase} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: 'var(--text-sm)',
+                          color: 'var(--color-text)',
+                        }}
+                      >
+                        <span>{phaseLabel(phase)}</span>
+                        <span style={{ fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'] }}>
+                          {count} ({pct}%)
+                        </span>
+                      </div>
+                      {/* Barre de progression */}
+                      <div
+                        style={{
+                          height: '6px',
+                          borderRadius: 'var(--radius-full)',
+                          backgroundColor: 'var(--color-border)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: '100%',
+                            width: `${pct}%`,
+                            borderRadius: 'var(--radius-full)',
+                            backgroundColor: barColor,
+                            transition: 'width var(--duration-slow)',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ─── Section Feedbacks qualitatifs ─── */}
+          <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 'var(--text-base)',
+                fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+                color: 'var(--color-text)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
+              Feedbacks ({feedbacks?.length ?? 0})
+            </h2>
+
+            {!feedbacks || feedbacks.length === 0 ? (
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
+                Aucun feedback pour l'instant.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                {feedbacks.map((fb) => (
+                  <div
+                    key={fb.id}
+                    style={{
+                      backgroundColor: 'var(--color-surface)',
+                      borderRadius: 'var(--radius-xl)',
+                      padding: 'var(--space-4)',
+                      boxShadow: 'var(--shadow-sm)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--space-3)',
+                    }}
+                  >
+                    {/* Date */}
+                    <span
+                      style={{
+                        fontSize: 'var(--text-xs)',
+                        color: 'var(--color-text-muted)',
+                      }}
+                    >
+                      {new Date(fb.created_at).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </span>
+
+                    {/* Ce qui a été aimé */}
+                    {fb.liked && (
+                      <div>
+                        <p
+                          style={{
+                            margin: '0 0 var(--space-1)',
+                            fontSize: 'var(--text-xs)',
+                            fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+                            color: 'var(--color-success)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          aimé ✓
+                        </p>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 'var(--text-sm)',
+                            color: 'var(--color-text)',
+                            lineHeight: 'var(--leading-relaxed)',
+                          }}
+                        >
+                          {fb.liked}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Ce qui a été frustrant */}
+                    {fb.frustrated && (
+                      <div>
+                        <p
+                          style={{
+                            margin: '0 0 var(--space-1)',
+                            fontSize: 'var(--text-xs)',
+                            fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+                            color: 'var(--color-error)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          frustré ✗
+                        </p>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 'var(--text-sm)',
+                            color: 'var(--color-text)',
+                            lineHeight: 'var(--leading-relaxed)',
+                          }}
+                        >
+                          {fb.frustrated}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}

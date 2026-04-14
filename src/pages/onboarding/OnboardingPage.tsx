@@ -7,6 +7,7 @@ import { updateProfile } from '@/services/profileService';
 import { saveHealthData } from '@/services/healthDataService';
 import { InputField } from '@/components/ui/InputField';
 import * as analytics from '@/lib/analytics';
+import { trackEvent } from '@/services/analyticsService';
 
 export function OnboardingPage() {
   const navigate = useNavigate();
@@ -113,6 +114,8 @@ export function OnboardingPage() {
         return;
       }
       analytics.track('onboarding_completed', { cycle_tracking: false });
+      // Track dans Supabase — onboarding_completed sans cycle
+      await trackEvent('onboarding_completed');
       navigate('/onboarding/reveal', { replace: true });
     }
   }
@@ -139,6 +142,11 @@ export function OnboardingPage() {
     }
     analytics.track('onboarding_step_completed', { step: 3 });
     analytics.track('onboarding_completed', { cycle_tracking: true });
+    // Track dans Supabase — cycle_filled (dates renseignées) + onboarding_completed
+    await Promise.all([
+      trackEvent('cycle_filled', { cycle_length: cycleLength }),
+      trackEvent('onboarding_completed'),
+    ]);
     navigate('/onboarding/reveal', { replace: true });
   }
 

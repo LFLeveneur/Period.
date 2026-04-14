@@ -32,7 +32,11 @@ export async function signInWithGoogle(): Promise<{ error: AuthError | null }> {
     // Redirige vers la racine après authentification
     // Supabase détecte le code du callback et termine le flow
     // PublicLayout gère ensuite la redirection vers /onboarding ou /home selon l'état du profil
-    options: { redirectTo: `${window.location.origin}/` },
+    options: {
+      redirectTo: `${window.location.origin}/`,
+      // Force Google à afficher le sélecteur de compte au lieu d'utiliser la session active
+      skipBrowserCache: true,
+    },
   });
   if (error) return { error: { message: mapErrorMessage(error.message) } };
   return { error: null };

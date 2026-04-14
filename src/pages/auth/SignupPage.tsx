@@ -1,10 +1,11 @@
 // Page d'inscription par email et mot de passe
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import * as authService from '@/services/authService';
 import * as analytics from '@/lib/analytics';
+import { trackEvent } from '@/services/analyticsService';
 
 export function SignupPage() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,11 @@ export function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Track la visite de la page d'inscription — one-time
+  useEffect(() => {
+    trackEvent('signup_started');
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
