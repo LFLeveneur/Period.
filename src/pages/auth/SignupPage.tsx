@@ -15,10 +15,6 @@ export function SignupPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [success, setSuccess] = useState(false);
 
-  // Track la visite de la page d'inscription — one-time
-  useEffect(() => {
-    trackEvent('signup_started');
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,7 +32,7 @@ export function SignupPage() {
     }
 
     setLoading(true);
-    const { error } = await authService.signUp(email, password);
+    const { userId, error } = await authService.signUp(email, password);
     setLoading(false);
 
     if (error) {
@@ -44,6 +40,10 @@ export function SignupPage() {
       return;
     }
 
+    // Track l'inscription avec l'userId nouvellement créé
+    if (userId) {
+      trackEvent('signup_started', undefined, userId);
+    }
     analytics.track('auth_user_signed_up', { method: 'email' });
     // Affiche message de confirmation d'email
     setSuccess(true);

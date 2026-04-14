@@ -12,10 +12,10 @@ function mapErrorMessage(message: string): string {
 }
 
 // Inscription avec email et mot de passe
-export async function signUp(email: string, password: string): Promise<{ error: AuthError | null }> {
-  const { error } = await supabase.auth.signUp({ email, password });
-  if (error) return { error: { message: mapErrorMessage(error.message) } };
-  return { error: null };
+export async function signUp(email: string, password: string): Promise<{ userId: string | null; error: AuthError | null }> {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) return { userId: null, error: { message: mapErrorMessage(error.message) } };
+  return { userId: data?.user?.id ?? null, error: null };
 }
 
 // Connexion avec email et mot de passe

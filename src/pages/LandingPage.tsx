@@ -1,9 +1,11 @@
 // Page d'accueil publique — première impression de l'app
 import { useNavigate } from 'react-router';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { useUserCount } from '@/hooks/useUserCount';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const { count } = useUserCount();
 
   return (
     <div
@@ -75,6 +77,21 @@ export function LandingPage() {
           J&apos;ai déjà un compte
         </button>
       </div>
+
+      {/* Compteur d'utilisatrices */}
+      {count !== null && count > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 'var(--space-4)',
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-text-muted-dark)',
+            fontFamily: 'var(--font-family)',
+          }}
+        >
+          {count} {count === 1 ? 'utilisatrice' : 'utilisatrices'} nous font confiance
+        </div>
+      )}
     </div>
   );
 }

@@ -21,17 +21,21 @@ function flagKey(eventType: EventType): string {
  * - Events one-time : trackés une seule fois par utilisatrice (flag dans user_settings)
  * - Events répétés : trackés à chaque appel (session_logged, page_viewed)
  * Retourne silencieusement en cas d'erreur — ne bloque jamais l'UX.
+ * @param userId Optionnel — si fourni, utilise cet ID au lieu de getUser()
  */
 export async function trackEvent(
   eventType: EventType,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
+  userId?: string
 ): Promise<void> {
   try {
-    // Récupère l'utilisatrice courante
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) return;
-
-    const userId = authData.user.id;
+    // Récupère le user_id — d'abord param, sinon getUser()
+    let finalUserId = userId;
+    if (!finalUserId) {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) return;
+      finalUserId = authData.user.id;
+    }
     const isOneTime = ONE_TIME_EVENTS.includes(eventType);
 
     if (isOneTime) {
@@ -40,7 +44,7 @@ export async function trackEvent(
       const { data: existing } = await supabase
         .from('user_settings')
         .select('value')
-        .eq('user_id', userId)
+        .eq('user_id', finalUserId)
         .eq('key', key)
         .maybeSingle();
 
@@ -50,19 +54,19 @@ export async function trackEvent(
       // Insère l'event ET pose le flag en parallèle
       await Promise.all([
         supabase.from('events').insert({
-          user_id: userId,
+          user_id: finalUserId,
           event_type: eventType,
           metadata: metadata ?? null,
         }),
         supabase.from('user_settings').upsert(
-          { user_id: userId, key, value: 'true' },
+          { user_id: finalUserId, key, value: 'true' },
           { onConflict: 'user_id,key' }
         ),
       ]);
     } else {
       // Event répété — insertion directe sans flag
       await supabase.from('events').insert({
-        user_id: userId,
+        user_id: finalUserId,
         event_type: eventType,
         metadata: metadata ?? null,
       });
@@ -261,5 +265,26 @@ export async function getFeedbackList(limit = 50): Promise<{
   } catch (err) {
     console.error('[analyticsService] getFeedbackList', err);
     return { data: null, error: 'Erreur lors de la récupération des feedbacks.' };
+  }
+}
+
+/**
+ * Compte le nombre total d'utilisatrices inscrites.
+ * Appelle la RPC Postgres count_users() — requiert son déploiement en base.
+ * Aucune restriction — peut être appelée publiquement.
+ */
+export async function getUserCount(): Promise<{
+  data: number | null;
+  error: string | null;
+}> {
+  try {
+    const { data, error } = await supabase.rpc('count_users');
+
+    if (error) return { data: null, error: error.message };
+
+    return { data: data as number, error: null };
+  } catch (err) {
+    console.error('[analyticsService] getUserCount', err);
+    return { data: null, error: 'Erreur lors du comptage des utilisatrices.' };
   }
 }

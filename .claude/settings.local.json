@@ -34,7 +34,9 @@
       "Bash(git rebase:*)",
       "Bash(git commit -m ':*)",
       "Bash(awk '{if \\(NF\\) print}')",
-      "Bash(pnpm run:*)"
+      "Bash(pnpm run:*)",
+      "Bash(cat)",
+      "Read(//tmp/**)"
     ]
   }
 }
