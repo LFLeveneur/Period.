@@ -35,7 +35,9 @@ export async function signInWithGoogle(): Promise<{ error: AuthError | null }> {
     options: {
       redirectTo: `${window.location.origin}/`,
       // Force Google à afficher le sélecteur de compte au lieu d'utiliser la session active
-      skipBrowserCache: true,
+      queryParams: {
+        prompt: 'select_account',
+      },
     },
   });
   if (error) return { error: { message: mapErrorMessage(error.message) } };
