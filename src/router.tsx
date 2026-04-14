@@ -31,7 +31,7 @@ import { ProgramDetailPage } from '@/pages/programs/ProgramDetailPage';
 import { ProgramEditPage } from '@/pages/programs/ProgramEditPage';
 
 // Pages admin
-import { AnalyticsPage } from '@/pages/Admin/AnalyticsPage';
+import { AnalyticsPage } from '@/pages/admin/AnalyticsPage';
 
 // Pages immersives — auth requise, sans bottom nav
 import { ProgramNewPage } from '@/pages/programs/ProgramNewPage';
