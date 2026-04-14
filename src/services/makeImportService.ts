@@ -63,20 +63,42 @@ export async function sendTextToMake(
   content_type: MakeContentType = 'text',
   file_name: string | null = null
 ): Promise<{ data: MakeImportResponse | null; error: string | null }> {
-  const payload: MakeWebhookPayload = { content_type, content, file_name };
+  // Si c'est une image (Data URL), nettoie le préfixe pour Make
+  // Regex qui gère data:image/png;base64, ET data:image/jpeg;base64, etc.
+  let cleanContent = content;
+  if (content_type === 'image' && content.startsWith('data:image/')) {
+    cleanContent = content.replace(/^data:image\/[^;]+;base64,/, '');
+  }
+
+  const payload: MakeWebhookPayload = { content_type, content: cleanContent, file_name };
 
   try {
+    const jsonBody = JSON.stringify(payload);
+
+    // Log détaillé pour diagnostiquer les problèmes d'encodage sur Windows
+    if (content_type === 'image') {
+      // Pour les images, on ne log que la longueur (base64 est très long)
+      console.log('[Make] Image upload:', { content_type, file_name, originalSize: content.length, cleanSize: cleanContent.length });
+    } else {
+      // Pour le texte, on log les 200 premiers caractères
+      console.log('[Make] Sending payload:', { content_type, file_name, textPreview: cleanContent.slice(0, 200) });
+    }
+
     const response = await fetch(env.MAKE_WEBHOOK_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8'
+      },
+      body: jsonBody,
     });
 
     if (!response.ok) {
+      console.error('[Make] HTTP error:', { status: response.status, statusText: response.statusText });
       return { data: null, error: `Erreur Make (${response.status}) — réessaie dans un moment.` };
     }
 
     const raw = await response.json();
+    console.log('[Make] Response received:', { isArray: Array.isArray(raw), hasBody: !!raw[0]?.body });
 
     // Make retourne un tableau [{ body: "...", status: 200, headers: [] }]
     // où body est une string JSON — il faut l'extraire et la parser
