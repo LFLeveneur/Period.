@@ -888,3 +888,70 @@ export async function getPreviousPhaseHistory(
     error: null,
   };
 }
+
+// ─── Vérification de complétion de séance ────────────────────────────────────
+
+/**
+ * Vérifie si une séance (program_session) a déjà été complétée.
+ * Retourne la plus récente completion history ou null si jamais faite.
+ */
+export async function getSessionCompletionBySessionId(
+  userId: string,
+  sessionId: string
+): Promise<{ data: { id: string; completed_at: string } | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from('session_history')
+    .select('id, completed_at')
+    .eq('user_id', userId)
+    .eq('session_id', sessionId)
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[sessionHistoryService] getSessionCompletionBySessionId:', error);
+    return { data: null, error: error.message };
+  }
+
+  if (!data) return { data: null, error: null };
+
+  return {
+    data: {
+      id: data.id as string,
+      completed_at: data.completed_at as string,
+    },
+    error: null,
+  };
+}
+
+// ─── Suppression de séance ────────────────────────────────────────────────────
+
+/**
+ * Supprime une séance complétée (session_history).
+ * Supprime aussi ses entries d'exercice (exercise_history).
+ */
+export async function deleteSessionHistory(sessionHistoryId: string): Promise<{ error: string | null }> {
+  // Supprime d'abord les exercise_history associées
+  const { error: exerciseError } = await supabase
+    .from('exercise_history')
+    .delete()
+    .eq('session_history_id', sessionHistoryId);
+
+  if (exerciseError) {
+    console.error('[sessionHistoryService] deleteSessionHistory - exercise_history:', exerciseError);
+    return { error: exerciseError.message };
+  }
+
+  // Puis supprime la session_history elle-même
+  const { error: historyError } = await supabase
+    .from('session_history')
+    .delete()
+    .eq('id', sessionHistoryId);
+
+  if (historyError) {
+    console.error('[sessionHistoryService] deleteSessionHistory - session_history:', historyError);
+    return { error: historyError.message };
+  }
+
+  return { error: null };
+}

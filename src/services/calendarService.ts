@@ -14,7 +14,13 @@ export interface CalendarDay {
   /** Séances complétées ce jour (peut être plusieurs) */
   sessionHistory: { id: string; sessionName: string; durationMinutes: number }[];
   /** Séances prévues non complétées (peut être plusieurs) */
-  pendingSession: { id: string; sessionName: string }[];
+  pendingSession: {
+    id: string;
+    sessionName: string;
+    completedHistoryId?: string; // Si défini, cette séance prévue a déjà été faite
+  }[];
+  /** Séances complétées sans correspondance dans les séances prévues (bonus/extra) */
+  extraSessions: { id: string; sessionName: string; durationMinutes: number }[];
 }
 
 /** Résultat du calendrier mensuel */
@@ -51,7 +57,7 @@ export async function getCalendarMonth(
     // 2. Séances complétées dans le mois — JOIN explicite via session_id
     supabase
       .from('session_history')
-      .select('id, duration_minutes, completed_at, program_sessions!session_id(name)')
+      .select('id, session_id, duration_minutes, completed_at, program_sessions!session_id(name)')
       .eq('user_id', userId)
       .gte('completed_at', firstDay)
       .lte('completed_at', lastDay + 'T23:59:59Z'),
@@ -85,7 +91,7 @@ export async function getCalendarMonth(
   }
 
   // Construit un index des séances complétées par date (YYYY-MM-DD) — accumule toutes les séances
-  const historyByDate: Record<string, { id: string; sessionName: string; durationMinutes: number }[]> = {};
+  const historyByDate: Record<string, { id: string; sessionId: string | null; sessionName: string; durationMinutes: number }[]> = {};
   for (const row of (historyResult.data ?? []) as Record<string, unknown>[]) {
     const completedAt = row['completed_at'] as string | null;
     if (!completedAt) continue;
@@ -99,13 +105,14 @@ export async function getCalendarMonth(
     }
     historyByDate[dateStr]!.push({
       id: row['id'] as string,
+      sessionId: (row['session_id'] as string | null) ?? null,
       sessionName,
       durationMinutes: (row['duration_minutes'] as number | null) ?? 0,
     });
   }
 
   // Construit un index des séances prévues par date — accumule toutes les séances
-  const pendingByDate: Record<string, { id: string; sessionName: string }[]> = {};
+  const pendingByDate: Record<string, { id: string; sessionName: string; completedHistoryId?: string }[]> = {};
 
   // Ajouter les séances avec date spécifique (scheduled_date) — seulement si future ou aujourd'hui
   for (const row of (pendingByDateResult.data ?? []) as Record<string, unknown>[]) {
@@ -154,16 +161,60 @@ export async function getCalendarMonth(
     phaseByDate[cd.date] = cd;
   }
 
+  // ─── Matching des séances prévues avec leurs complétions ────────────────────
+  // Pour chaque séance prévue, cherche si elle a une sessionHistory correspondante
+  for (const dateStr in pendingByDate) {
+    const pendingSessions = pendingByDate[dateStr];
+    const histories = historyByDate[dateStr] ?? [];
+
+    for (const pending of pendingSessions) {
+      // Cherche une sessionHistory correspondant à cette pendingSession
+      const matchingHistory = histories.find(h => h.sessionId === pending.id);
+      if (matchingHistory) {
+        pending.completedHistoryId = matchingHistory.id;
+      }
+    }
+  }
+
+  // ─── Extraction des séances supplémentaires (complétées mais non prévues) ────
+  // Crée un index des extraSessions par date
+  const extraSessionsByDate: Record<string, { id: string; sessionName: string; durationMinutes: number }[]> = {};
+  for (const dateStr in historyByDate) {
+    const histories = historyByDate[dateStr];
+    const pendingSessions = pendingByDate[dateStr] ?? [];
+
+    // Créer un set des IDs de sessions prévues pour cette date
+    const pendingSessionIds = new Set(pendingSessions.map(p => p.id));
+
+    // Les sessions supplémentaires sont celles complétées sans correspondance prévue
+    const extras = histories.filter(h => h.sessionId === null || !pendingSessionIds.has(h.sessionId));
+
+    if (extras.length > 0) {
+      extraSessionsByDate[dateStr] = extras.map(e => ({
+        id: e.id,
+        sessionName: e.sessionName,
+        durationMinutes: e.durationMinutes,
+      }));
+    }
+  }
+
   // Assemble les CalendarDay pour chaque jour du mois
   const days: CalendarDay[] = [];
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
     days.push({
       date: dateStr,
       cycleDay: phaseByDate[dateStr] ?? null,
-      sessionHistory: historyByDate[dateStr] ?? [],
+      // Garde TOUTES les sessionHistory (complétées ce jour)
+      sessionHistory: (historyByDate[dateStr] ?? []).map(h => ({
+        id: h.id,
+        sessionName: h.sessionName,
+        durationMinutes: h.durationMinutes,
+      })),
       pendingSession: pendingByDate[dateStr] ?? [],
+      extraSessions: extraSessionsByDate[dateStr] ?? [],
     });
   }
 

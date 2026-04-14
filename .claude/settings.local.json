@@ -46,7 +46,9 @@
       "Bash(pkill -f \"npm run dev\")",
       "mcp__Claude_Preview__preview_start",
       "Bash(curl -s http://localhost:5175/@react-refresh)",
-      "Bash(pkill -f \"vite|pnpm dev\")"
+      "Bash(pkill -f \"vite|pnpm dev\")",
+      "Bash(pnpm tsc:*)",
+      "Bash(pnpm build:*)"
     ]
   }
 }

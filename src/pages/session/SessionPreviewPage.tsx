@@ -2,8 +2,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { getSessionById } from '@/services/programService';
-import { getExerciseHistory } from '@/services/sessionHistoryService';
+import { getExerciseHistory, getSessionCompletionBySessionId } from '@/services/sessionHistoryService';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useActiveSession } from '@/contexts/ActiveSessionContext';
 import { useCycleDay } from '@/hooks/useCycleDay';
@@ -26,6 +28,7 @@ export function SessionPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [completionWarning, setCompletionWarning] = useState<{ completedAt: string; confirmed?: boolean } | null>(null);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -59,6 +62,13 @@ export function SessionPreviewPage() {
       );
 
       setExerciseHistories(histories);
+
+      // Vérifie si cette séance a déjà été complétée
+      const { data: completionData } = await getSessionCompletionBySessionId(user!.id, sessionData.session.id);
+      if (completionData) {
+        setCompletionWarning({ completedAt: completionData.completed_at });
+      }
+
       setLoading(false);
 
       // Track la vue de la preview après chargement réussi
@@ -73,6 +83,15 @@ export function SessionPreviewPage() {
 
   const handleStart = () => {
     if (!session) return;
+    // Si une complétion existe et pas encore confirmée, ne rien faire (la modal s'affichera)
+    if (completionWarning && !completionWarning.confirmed) {
+      return;
+    }
+    performStartSession();
+  };
+
+  const performStartSession = () => {
+    if (!session) return;
     setStarting(true);
     startSession(session, cycleDay?.phase ?? null, cycleDay?.cycleDay ?? null);
     analytics.track('session_started', {
@@ -81,6 +100,11 @@ export function SessionPreviewPage() {
       cycle_day: cycleDay?.cycleDay ?? null,
     });
     navigate(`/session/${session.session.id}/active`, { replace: false });
+  };
+
+  const handleConfirmRestart = () => {
+    setCompletionWarning(prev => prev ? { ...prev, confirmed: true } : null);
+    performStartSession();
   };
 
   // Conseil de phase pour la preview
@@ -431,6 +455,118 @@ export function SessionPreviewPage() {
           ))}
         </AnimatePresence>
       </motion.div>
+
+      {/* Modal d'avertissement — séance déjà complétée */}
+      <AnimatePresence>
+        {completionWarning && !completionWarning.confirmed && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setCompletionWarning(null)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                backgroundColor: 'rgba(47, 0, 87, 0.5)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 100,
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              style={{
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'var(--color-surface)',
+                borderRadius: '24px',
+                padding: 'var(--space-6)',
+                maxWidth: '90%',
+                width: '100%',
+                maxHeight: '80vh',
+                zIndex: 101,
+                boxShadow: '0 20px 60px rgba(47, 0, 87, 0.3)',
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: 'var(--text-xl)',
+                  fontWeight: 800,
+                  color: 'var(--color-text)',
+                  marginBottom: 'var(--space-3)',
+                  margin: 0,
+                }}
+              >
+                ✨ Vous l'avez déjà faite !
+              </h2>
+              <p
+                style={{
+                  fontSize: 'var(--text-base)',
+                  color: 'var(--color-text-muted)',
+                  marginBottom: 'var(--space-6)',
+                  margin: '0 0 var(--space-6)',
+                  lineHeight: 1.6,
+                }}
+              >
+                Vous avez déjà complété cette séance le {format(new Date(completionWarning.completedAt), 'dd MMMM yyyy', { locale: fr })}.
+                <br />
+                Voulez-vous la relancer ?
+              </p>
+
+              {/* Boutons */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 'var(--space-3)',
+                  flexDirection: 'column',
+                }}
+              >
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleConfirmRestart}
+                  style={{
+                    padding: 'var(--space-4) var(--space-5)',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a4bcf 100%)',
+                    border: 'none',
+                    color: 'white',
+                    fontSize: 'var(--text-base)',
+                    fontWeight: 700,
+                    fontFamily: 'var(--font-family)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Oui, relancer
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setCompletionWarning(null)}
+                  style={{
+                    padding: 'var(--space-4) var(--space-5)',
+                    borderRadius: '12px',
+                    background: 'var(--color-bg)',
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    color: 'var(--color-text)',
+                    fontSize: 'var(--text-base)',
+                    fontWeight: 700,
+                    fontFamily: 'var(--font-family)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Annuler
+                </motion.button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* CTA commencer — fixé en bas */}
       <motion.div
