@@ -70,10 +70,8 @@ export function AppRouter() {
           <Route path="/programs/import" element={<ProgramImportPage />} />
           <Route path="/programs/:id" element={<ProgramDetailPage />} />
           <Route path="/programs/:id/edit" element={<ProgramEditPage />} />
+          <Route path="/admin/analytics" element={<AnalyticsPage />} />
         </Route>
-
-        {/* Route admin — accès réservé aux utilisatrices avec is_admin = true */}
-        <Route path="/admin/analytics" element={<AnalyticsPage />} />
 
         {/* Routes immersives — auth + onboarding requis, sans bottom nav */}
         <Route element={<ImmersiveLayout />}>
