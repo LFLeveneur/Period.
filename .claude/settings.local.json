@@ -36,7 +36,8 @@
       "Bash(awk '{if \\(NF\\) print}')",
       "Bash(pnpm run:*)",
       "Bash(cat)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
     ]
   }
 }

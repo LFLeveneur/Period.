@@ -83,9 +83,24 @@ export async function sendTextToMake(
     let data: MakeImportResponse;
     if (Array.isArray(raw) && typeof raw[0]?.body === 'string') {
       try {
-        data = JSON.parse(raw[0].body) as MakeImportResponse;
-      } catch {
-        return { data: null, error: 'Impossible de parser la réponse Make.' };
+        // Nettoie les BOM (Byte Order Mark) et espaces au début/fin
+        // (problème courant sur Windows/Android avec certains encodages)
+        let bodyStr = raw[0].body.trim();
+        // Supprime le BOM UTF-8 (\uFEFF) s'il existe
+        if (bodyStr.charCodeAt(0) === 0xfeff) {
+          bodyStr = bodyStr.slice(1);
+        }
+        // Vérifie que ça commence par { ou [ (JSON valide)
+        if (!bodyStr.match(/^[\{\[]/)) {
+          console.error('Réponse Make non-JSON:', bodyStr.slice(0, 100));
+          return { data: null, error: 'Réponse Make invalide — contacte le support si ça persiste.' };
+        }
+        data = JSON.parse(bodyStr) as MakeImportResponse;
+      } catch (parseError) {
+        // Log le début de la réponse pour diagnostiquer
+        const bodyPreview = raw[0].body.slice(0, 100);
+        console.error('Erreur parsing Make:', parseError, 'Body:', bodyPreview);
+        return { data: null, error: 'Impossible de parser la réponse Make — réessaie dans un moment.' };
       }
     } else {
       // Réponse directe (sans enveloppe)
