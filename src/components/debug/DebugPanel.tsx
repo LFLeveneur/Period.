@@ -195,12 +195,15 @@ export function DebugPanel() {
       session: {
         name: 'Full Body A (debug)',
         durationMinutes: 52,
-        feeling: 'solid',
+        feeling: 'solid' as const,
         energyScore: 4,
         performanceScore: 78,
-        performanceLevel: 'good',
+        performanceLevel: 'solid' as const,
         totalVolume: 3800,
-        victories: ['PR Squat +2.5kg', 'Volume total record'],
+        victories: [
+          { type: 'new_record' as const, exerciseName: 'Squat', value: 62.5, previousValue: 60, improvement: '+2.5kg' },
+          { type: 'double_record' as const, exerciseName: 'Volume', value: 3800 },
+        ],
         exercises: [
           { name: 'Squat', avgRIR: 2, vs_previous_kg_delta: 2.5, vs_same_phase_kg_delta: 5, progression: 'up' },
           { name: 'Hip Thrust', avgRIR: 1, vs_previous_kg_delta: 0, vs_same_phase_kg_delta: 2.5, progression: 'stable' },

@@ -5,7 +5,7 @@ import {
   getSessionHistoryDetail,
   getLatestSessionHistoryBySessionId,
 } from '@/services/sessionHistoryService';
-import { buildAfterPayload, sendToCoach } from '@/services/aiCoachService';
+import { buildAfterPayload, sendToCoach, getCoachAdvice } from '@/services/aiCoachService';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useCycleDay } from '@/hooks/useCycleDay';
 import { useToast } from '@/hooks/useToast';
@@ -32,8 +32,9 @@ export function SessionRecapPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
-  const { user } = useAuthContext();
-  const { cycleDay, cycleLength } = useCycleDay();
+  const { user, profile } = useAuthContext();
+  const { cycleDay } = useCycleDay();
+  const cycleLength = cycleDay?.cycleLength ?? null;
 
   const [detail, setDetail] = useState<SessionHistoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,16 +85,31 @@ export function SessionRecapPage() {
     load();
   }, [id, location.state, navigate, showToast]);
 
-  // Coach IA — appeler après la séance
+  // Coach IA — vérifie le cache d'abord, appelle le webhook seulement si pas encore analysé
   useEffect(() => {
-    if (!detail || !user || !user.profile || !cycleDay || !cycleLength) return;
+    if (!detail || !user || !cycleDay || cycleLength === null) return;
 
     async function loadCoach() {
+      if (!detail || !user || !cycleDay || cycleLength === null) return;
+
+      // 1. Vérifier si une analyse existe déjà pour cette session_history
+      const { data: cached } = await getCoachAdvice(user.id, 'after_session', detail.session_id, detail.id);
+
+      if (cached) {
+        // Résultat déjà en base — affichage instantané
+        setCoachSummary(cached.summary);
+        setCoachDetail(cached.detail as AfterSessionAnalysis);
+        setCoachState('ready');
+        return;
+      }
+
+      // 2. Pas encore analysé — profil requis pour construire le payload
+      if (!profile) return;
       setCoachState('loading');
 
       const payload = buildAfterPayload(
-        user.profile!,
-        detail.cycle_phase,
+        profile,
+        detail.cycle_phase as typeof detail.cycle_phase,
         detail.cycle_day ?? cycleDay.cycleDay,
         cycleLength,
         detail
@@ -103,7 +119,7 @@ export function SessionRecapPage() {
 
       if (result.data) {
         setCoachSummary(result.data.summary);
-        setCoachDetail(result.data.detail);
+        setCoachDetail(result.data.detail as AfterSessionAnalysis);
         setCoachState('ready');
       } else {
         setCoachState('idle');
@@ -111,7 +127,7 @@ export function SessionRecapPage() {
     }
 
     loadCoach();
-  }, [detail, user, cycleDay, cycleLength]);
+  }, [detail, user, cycleDay, cycleLength, profile]);
 
   if (loading) {
     return (
@@ -422,8 +438,8 @@ export function SessionRecapPage() {
         </div>
       )}
 
-      {/* Coach IA — analyse après séance */}
-      {user?.profile?.cycle_tracking && (
+      {/* Coach IA — analyse après séance — visible dès que le coach a quelque chose à montrer */}
+      {coachState !== 'idle' && (
         <AICoachCard type="after_session" state={coachState} summary={coachSummary} detail={coachDetail} />
       )}
 

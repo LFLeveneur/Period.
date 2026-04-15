@@ -1,49 +1,121 @@
 // Composant Coach IA — affiche le conseil et la modale de détail
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { AICoachCardProps, BeforeSessionAdvice, AfterSessionAnalysis } from '@/types/aiCoach';
 
+// Messages qui défilent pendant l'analyse
+const LOADING_MESSAGES_BEFORE = [
+  'Analyse de ta phase de cycle…',
+  'Lecture de ton historique…',
+  'Calcul des ajustements de charge…',
+  'Préparation de tes conseils…',
+];
+
+const LOADING_MESSAGES_AFTER = [
+  'Analyse de tes performances…',
+  'Comparaison avec les séances précédentes…',
+  'Lecture des signaux de récupération…',
+  'Synthèse de ta séance…',
+];
+
 export function AICoachCard({ type, state, summary, detail }: AICoachCardProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [messageIdx, setMessageIdx] = useState(0);
+
+  // Défile les messages toutes les 2.5s pendant le chargement
+  useEffect(() => {
+    if (state !== 'loading') return;
+    const messages = type === 'before_session' ? LOADING_MESSAGES_BEFORE : LOADING_MESSAGES_AFTER;
+    const interval = setInterval(() => {
+      setMessageIdx(i => (i + 1) % messages.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [state, type]);
 
   // Ne rien afficher en idle ou error
   if (state === 'idle' || state === 'error') {
     return null;
   }
 
-  // État loading — skeleton card
+  // État loading — skeleton animé
   if (state === 'loading') {
+    const messages = type === 'before_session' ? LOADING_MESSAGES_BEFORE : LOADING_MESSAGES_AFTER;
     return (
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
         style={{
           backgroundColor: 'var(--color-surface)',
           borderRadius: '28px',
           padding: 'var(--space-4)',
           marginBottom: 'var(--space-4)',
-          border: '1px solid #fdf2f8',
+          border: '1px solid rgba(197, 132, 238, 0.15)',
           boxShadow: 'var(--shadow-md)',
+          overflow: 'hidden',
+          position: 'relative',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-2)',
-            marginBottom: 'var(--space-3)',
-          }}
-        >
-          <span style={{ fontSize: '20px' }}>🤖</span>
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Ton coach analyse…</span>
+        {/* Barre de progression indéterminée */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', backgroundColor: 'rgba(197, 132, 238, 0.15)', borderRadius: '28px 28px 0 0' }}>
+          <motion.div
+            animate={{ x: ['-100%', '200%'] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '50%',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)',
+              borderRadius: '2px',
+            }}
+          />
         </div>
-        <div
-          style={{
-            height: '12px',
-            backgroundColor: 'var(--color-border)',
-            borderRadius: '4px',
-            opacity: 0.5,
-          }}
-        />
-      </div>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
+            Analyse de ta séance
+          </span>
+        </div>
+
+        {/* Message rotatif */}
+        <div style={{ position: 'relative', height: '20px', marginBottom: 'var(--space-4)', overflow: 'hidden' }}>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={messageIdx}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              style={{
+                position: 'absolute',
+                fontSize: 'var(--text-sm)',
+                color: 'var(--color-text-muted)',
+              }}
+            >
+              {messages[messageIdx]}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+
+        {/* Lignes skeleton */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          {[90, 75, 60].map((width, i) => (
+            <motion.div
+              key={i}
+              animate={{ opacity: [0.3, 0.6, 0.3] }}
+              transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.2, ease: 'easeInOut' }}
+              style={{
+                height: '11px',
+                width: `${width}%`,
+                backgroundColor: 'var(--color-border)',
+                borderRadius: '6px',
+              }}
+            />
+          ))}
+        </div>
+      </motion.div>
     );
   }
 
@@ -72,9 +144,8 @@ export function AICoachCard({ type, state, summary, detail }: AICoachCardProps) 
             marginBottom: 'var(--space-3)',
           }}
         >
-          <span style={{ fontSize: '20px' }}>🤖</span>
           <span style={{ fontSize: 'var(--text-sm)', fontWeight: '600', color: 'var(--color-text)' }}>
-            Coach IA
+            Analyse de ta séance
           </span>
         </div>
 

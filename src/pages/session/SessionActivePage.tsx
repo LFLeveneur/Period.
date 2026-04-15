@@ -26,7 +26,7 @@ import * as analytics from '@/lib/analytics';
 export function SessionActivePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthContext();
+  const { user, profile } = useAuthContext();
   const { showToast } = useToast();
   const {
     state,
@@ -119,11 +119,12 @@ export function SessionActivePage() {
     if (!sessionData || !user || coachRetryCount > 1) return;
 
     async function loadCoach() {
-      const { data, error } = await getCoachAdvice(user.id, 'before_session', sessionData.session.id, null);
+      if (!user || !sessionData) return;
+      const { data } = await getCoachAdvice(user.id, 'before_session', sessionData.session.id, null);
 
       if (data) {
         setCoachSummary(data.summary);
-        setCoachDetail(data.detail);
+        setCoachDetail(data.detail as BeforeSessionAdvice);
         setCoachState('ready');
       } else if (coachRetryCount === 0) {
         // Premier appel vide → retry après 3 secondes
@@ -398,7 +399,7 @@ export function SessionActivePage() {
       )}
 
       {/* Coach IA — analyse avant séance */}
-      {user?.profile?.cycle_tracking && (
+      {profile?.cycle_tracking && (
         <div style={{ padding: '0 var(--space-4)', paddingTop: phaseConfig && phaseAdvice ? 'var(--space-3)' : 0 }}>
           <AICoachCard type="before_session" state={coachState} summary={coachSummary} detail={coachDetail} />
         </div>

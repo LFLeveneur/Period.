@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getSessionById } from '@/services/programService';
 import { getExerciseHistory, getSessionCompletionBySessionId } from '@/services/sessionHistoryService';
-import { buildBeforePayload, sendToCoach } from '@/services/aiCoachService';
+import { buildBeforePayload, sendToCoach, getCoachAdvice } from '@/services/aiCoachService';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useActiveSession } from '@/contexts/ActiveSessionContext';
 import { useCycleDay } from '@/hooks/useCycleDay';
@@ -87,16 +87,33 @@ export function SessionPreviewPage() {
     load();
   }, [id, user]);
 
-  // Coach IA — appeler après que les données soient chargées
+  // Coach IA — vérifie le cache d'abord, appelle le webhook seulement si pas encore analysé
   useEffect(() => {
     if (!session || !user || !cycleDay || !profile || Object.keys(exerciseHistories).length === 0) return;
 
     async function loadCoach() {
+      if (!session || !user || !cycleDay || !profile) return;
+
+      // 1. Vérifier si un conseil existe déjà pour cette séance
+      const { data: cached } = await getCoachAdvice(user.id, 'before_session', session.session.id, null);
+
+      if (cached) {
+        // Résultat déjà en base — affichage instantané, pas de loading
+        setCoachSummary(cached.summary);
+        setCoachDetail(cached.detail as BeforeSessionAdvice);
+        setCoachState('ready');
+        return;
+      }
+
+      // 2. Pas encore analysé — appel webhook
       setCoachState('loading');
 
+      // Convertir CyclePhaseDisplay → CyclePhase pour le payload
+      const dbPhase = cycleDay.phase === 'luteal_early' || cycleDay.phase === 'luteal_late' ? 'luteal' : cycleDay.phase;
+
       const payload = buildBeforePayload(
-        profile!,
-        cycleDay.phase,
+        profile,
+        dbPhase,
         cycleDay.cycleDay,
         cycleDay.cycleLength,
         cycleDay.periodLength,
@@ -108,7 +125,7 @@ export function SessionPreviewPage() {
 
       if (result.data) {
         setCoachSummary(result.data.summary);
-        setCoachDetail(result.data.detail);
+        setCoachDetail(result.data.detail as BeforeSessionAdvice);
         setCoachState('ready');
       } else {
         setCoachState('idle');
@@ -116,7 +133,7 @@ export function SessionPreviewPage() {
     }
 
     loadCoach();
-  }, [session, user, cycleDay, exerciseHistories]);
+  }, [session, user, cycleDay, exerciseHistories, profile]);
 
   const handleStart = () => {
     if (!session) return;
