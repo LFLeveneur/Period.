@@ -6,20 +6,23 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { getSessionById } from '@/services/programService';
 import { getExerciseHistory, getSessionCompletionBySessionId } from '@/services/sessionHistoryService';
+import { buildBeforePayload, sendToCoach } from '@/services/aiCoachService';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useActiveSession } from '@/contexts/ActiveSessionContext';
 import { useCycleDay } from '@/hooks/useCycleDay';
 import { PreviewExerciseCard } from '@/components/session/PreviewExerciseCard';
+import { AICoachCard } from '@/components/AICoachCard';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import type { SessionWithExercises } from '@/services/programService';
 import type { ExerciseHistoryEntry } from '@/types/workout';
+import type { AICoachState, BeforeSessionAdvice } from '@/types/aiCoach';
 import { CYCLE_ADVICE } from '@/constants/session';
 import * as analytics from '@/lib/analytics';
 
 export function SessionPreviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthContext();
+  const { user, profile } = useAuthContext();
   const { startSession } = useActiveSession();
   const { cycleDay } = useCycleDay();
 
@@ -29,6 +32,9 @@ export function SessionPreviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [completionWarning, setCompletionWarning] = useState<{ completedAt: string; confirmed?: boolean } | null>(null);
+  const [coachState, setCoachState] = useState<AICoachState>('idle');
+  const [coachSummary, setCoachSummary] = useState<string>();
+  const [coachDetail, setCoachDetail] = useState<BeforeSessionAdvice>();
 
   useEffect(() => {
     if (!id || !user) return;
@@ -80,6 +86,37 @@ export function SessionPreviewPage() {
 
     load();
   }, [id, user]);
+
+  // Coach IA — appeler après que les données soient chargées
+  useEffect(() => {
+    if (!session || !user || !cycleDay || !profile || Object.keys(exerciseHistories).length === 0) return;
+
+    async function loadCoach() {
+      setCoachState('loading');
+
+      const payload = buildBeforePayload(
+        profile!,
+        cycleDay.phase,
+        cycleDay.cycleDay,
+        cycleDay.cycleLength,
+        cycleDay.periodLength,
+        session,
+        exerciseHistories
+      );
+
+      const result = await sendToCoach(payload, user.id, session.session.id, null);
+
+      if (result.data) {
+        setCoachSummary(result.data.summary);
+        setCoachDetail(result.data.detail);
+        setCoachState('ready');
+      } else {
+        setCoachState('idle');
+      }
+    }
+
+    loadCoach();
+  }, [session, user, cycleDay, exerciseHistories]);
 
   const handleStart = () => {
     if (!session) return;
@@ -407,6 +444,18 @@ export function SessionPreviewPage() {
               {phaseAdvice}
             </p>
           </div>
+        </motion.div>
+      )}
+
+      {/* Coach IA — analyse avant séance — visible dès que le coach a quelque chose à montrer */}
+      {coachState !== 'idle' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.25 }}
+          style={{ padding: '0 var(--space-4)' }}
+        >
+          <AICoachCard type="before_session" state={coachState} summary={coachSummary} detail={coachDetail} />
         </motion.div>
       )}
 

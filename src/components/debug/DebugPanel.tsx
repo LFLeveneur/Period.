@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { ToastContext } from '@/components/ui/Toast';
 import * as debugService from '@/services/debugService';
+import { sendToCoach } from '@/services/aiCoachService';
 import type { HealthDataDebug, SessionHistoryDebug } from '@/services/debugService';
 import type { Profile } from '@/types/auth';
 import type { Program } from '@/types/workout';
@@ -32,6 +33,10 @@ export function DebugPanel() {
   // Historique séances en base
   const [sessionHistoryDebug, setSessionHistoryDebug] = useState<SessionHistoryDebug[]>([]);
   const [sessionHistoryLoading, setSessionHistoryLoading] = useState(false);
+
+  // Test webhook Coach IA
+  const [coachLoading, setCoachLoading] = useState<'before' | 'after' | null>(null);
+  const [coachResult, setCoachResult] = useState<string>('');
 
   // Rafraîchit les infos du debug
   const refreshDebugInfo = async () => {
@@ -128,6 +133,94 @@ export function DebugPanel() {
     } else {
       showToast(`Programme de test créé: ${data?.name}`, 'success');
       await refreshDebugInfo();
+    }
+  };
+
+  // ─── COACH IA ────────────────────────────────────────────────────────────
+
+  const handleTestCoachBefore = async () => {
+    if (!user) return;
+    setCoachLoading('before');
+    setCoachResult('🚀 Envoi en cours...');
+
+    // Payload mock "before_session"
+    const mockPayload = {
+      type: 'before_session' as const,
+      user: {
+        name: debugInfo.profile?.name ?? 'Mathilde',
+        fitnessLevel: debugInfo.profile?.level ?? 'intermediaire',
+        objective: debugInfo.profile?.objective ?? 'equilibre',
+      },
+      cycle: { phase: 'follicular', cycleDay: 8, cycleLength: 28, periodLength: 5, daysUntilPeriod: 20 },
+      session: {
+        name: 'Full Body A (debug)',
+        totalExercisesCount: 2,
+        exercises: [
+          { name: 'Squat', sets: 3, targetReps: 8, targetWeight: 60, inputType: 'weight_reps', lastSessionWeight: 57.5, lastSessionReps: 8, samePhaseLastWeight: 55, samePhaseLastReps: 8, personalRecord: 60 },
+          { name: 'Hip Thrust', sets: 4, targetReps: 10, targetWeight: 80, inputType: 'weight_reps', lastSessionWeight: 77.5, lastSessionReps: 10, samePhaseLastWeight: 75, samePhaseLastReps: 10, personalRecord: 82.5 },
+        ],
+      },
+    };
+
+    try {
+      // UUID unique pour forcer un nouvel appel (pas de cache)
+      const fakeSessionId = crypto.randomUUID();
+      const result = await sendToCoach(mockPayload, user.id, fakeSessionId, null);
+      if (result.data) {
+        setCoachResult(`✅ Succès!\n\nSummary:\n${result.data.summary}\n\nID: ${result.data.id}`);
+      } else {
+        setCoachResult('⚠️ Webhook retourné null (pas de données)');
+      }
+    } catch (err) {
+      setCoachResult(`❌ Erreur: ${String(err)}`);
+    } finally {
+      setCoachLoading(null);
+    }
+  };
+
+  const handleTestCoachAfter = async () => {
+    if (!user) return;
+    setCoachLoading('after');
+    setCoachResult('🚀 Envoi en cours...');
+
+    // Payload mock "after_session"
+    const mockPayload = {
+      type: 'after_session' as const,
+      user: {
+        name: debugInfo.profile?.name ?? 'Mathilde',
+        fitnessLevel: debugInfo.profile?.level ?? 'intermediaire',
+        objective: debugInfo.profile?.objective ?? 'equilibre',
+      },
+      cycle: { phase: 'follicular', cycleDay: 8, daysUntilPeriod: 20 },
+      session: {
+        name: 'Full Body A (debug)',
+        durationMinutes: 52,
+        feeling: 'solid',
+        energyScore: 4,
+        performanceScore: 78,
+        performanceLevel: 'good',
+        totalVolume: 3800,
+        victories: ['PR Squat +2.5kg', 'Volume total record'],
+        exercises: [
+          { name: 'Squat', avgRIR: 2, vs_previous_kg_delta: 2.5, vs_same_phase_kg_delta: 5, progression: 'up' },
+          { name: 'Hip Thrust', avgRIR: 1, vs_previous_kg_delta: 0, vs_same_phase_kg_delta: 2.5, progression: 'stable' },
+        ],
+      },
+    };
+
+    try {
+      const fakeHistoryId = crypto.randomUUID();
+      const fakeSessionId = crypto.randomUUID();
+      const result = await sendToCoach(mockPayload, user.id, fakeSessionId, fakeHistoryId);
+      if (result.data) {
+        setCoachResult(`✅ Succès!\n\nSummary:\n${result.data.summary}\n\nID: ${result.data.id}`);
+      } else {
+        setCoachResult('⚠️ Webhook retourné null (pas de données)');
+      }
+    } catch (err) {
+      setCoachResult(`❌ Erreur: ${String(err)}`);
+    } finally {
+      setCoachLoading(null);
     }
   };
 
@@ -432,6 +525,49 @@ export function DebugPanel() {
               Clique sur "Charger" pour voir les données Supabase.
             </p>
           )}
+
+          {/* ─── COACH IA — TEST WEBHOOKS ────────────────────────── */}
+          <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold', marginTop: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>
+            🤖 Coach IA — Test webhooks
+          </h2>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+            <button
+              onClick={handleTestCoachBefore}
+              style={{ ...debugButtonStyle, marginBottom: 0, backgroundColor: coachLoading === 'before' ? '#ddd' : '#e8f4fd', borderColor: '#90cdf4' }}
+              disabled={coachLoading !== null}
+            >
+              {coachLoading === 'before' ? '⏳ Envoi...' : '▶ Before session'}
+            </button>
+            <button
+              onClick={handleTestCoachAfter}
+              style={{ ...debugButtonStyle, marginBottom: 0, backgroundColor: coachLoading === 'after' ? '#ddd' : '#f0fff4', borderColor: '#9ae6b4' }}
+              disabled={coachLoading !== null}
+            >
+              {coachLoading === 'after' ? '⏳ Envoi...' : '▶ After session'}
+            </button>
+          </div>
+
+          {coachResult && (
+            <pre style={{
+              padding: 'var(--space-2)',
+              backgroundColor: coachResult.includes('✅') ? '#f0fff4' : coachResult.includes('🚀') ? '#fffbeb' : '#fff5f5',
+              border: `1px solid ${coachResult.includes('✅') ? '#9ae6b4' : coachResult.includes('🚀') ? '#fbd38d' : '#feb2b2'}`,
+              borderRadius: 'var(--radius-md)',
+              fontSize: '10px',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: '200px',
+              overflowY: 'auto',
+              marginBottom: 'var(--space-2)',
+            }}>
+              {coachResult}
+            </pre>
+          )}
+
+          <p style={{ fontSize: 'var(--text-xs)', color: '#888', fontStyle: 'italic', marginBottom: 'var(--space-2)' }}>
+            Utilise des données mock — chaque clic crée un nouvel appel (pas de cache).
+          </p>
 
           {/* ─── NAVIGATION RAPIDE ──────────────────────────────────── */}
           <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold', marginTop: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>

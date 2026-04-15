@@ -49,7 +49,16 @@
       "Bash(pkill -f \"vite|pnpm dev\")",
       "Bash(pnpm tsc:*)",
       "Bash(pnpm build:*)",
-      "Bash(git commit -m 'fix: remove unused debug handler functions:*)"
+      "Bash(git commit -m 'fix: remove unused debug handler functions:*)",
+      "Bash(echo \"Serveur lancé, PID: $!\")",
+      "Bash(pkill -f \"vite\")",
+      "Bash(curl -s http://localhost:5173/session/test/preview)",
+      "Bash(curl -X POST https://hook.eu1.make.com/t24r5o84bw7an2wnjxtdlu6idqo54qum -H 'Content-Type: application/json' -d '{:*)",
+      "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/profiles?user_id=eq.6714c53f-5539-4e11-bdd1-b6361837a942' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json')",
+      "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/profiles?select=*&user_id=eq.6714c53f-5539-4e11-bdd1-b6361837a942' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Authorization: Bearer sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json' -H 'Prefer: return=representation')",
+      "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/health_data?select=*&user_id=eq.6714c53f-5539-4e11-bdd1-b6361837a942' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json')",
+      "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/profiles?select=user_id,display_name,cycle_tracking&limit=3' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json')",
+      "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/profiles?select=*&limit=1' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json')"
     ]
   }
 }

@@ -5,15 +5,20 @@ import {
   getSessionHistoryDetail,
   getLatestSessionHistoryBySessionId,
 } from '@/services/sessionHistoryService';
+import { buildAfterPayload, sendToCoach } from '@/services/aiCoachService';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useCycleDay } from '@/hooks/useCycleDay';
 import { useToast } from '@/hooks/useToast';
 import { CyclePhaseBadge } from '@/components/ui/CyclePhaseBadge';
 import { VictoryCard } from '@/components/session/VictoryCard';
 import { RecapExerciseCard } from '@/components/session/RecapExerciseCard';
+import { AICoachCard } from '@/components/AICoachCard';
 import { FEELING_LABELS, RECAP_MESSAGES } from '@/constants/session';
 import { PHASE_DISPLAY_CONFIG } from '@/utils/phaseConfig';
 import { trackEvent } from '@/services/analyticsService';
 import type { SessionHistoryDetail } from '@/types/workout';
 import type { CyclePhaseDisplay } from '@/types/cycle';
+import type { AICoachState, AfterSessionAnalysis } from '@/types/aiCoach';
 
 /** Convertit CyclePhase (DB) en CyclePhaseDisplay (UI) */
 function toDisplayPhase(phase: string | null): CyclePhaseDisplay | null {
@@ -27,9 +32,14 @@ export function SessionRecapPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
+  const { user } = useAuthContext();
+  const { cycleDay, cycleLength } = useCycleDay();
 
   const [detail, setDetail] = useState<SessionHistoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [coachState, setCoachState] = useState<AICoachState>('idle');
+  const [coachSummary, setCoachSummary] = useState<string>();
+  const [coachDetail, setCoachDetail] = useState<AfterSessionAnalysis>();
 
   useEffect(() => {
     if (!id) return;
@@ -73,6 +83,35 @@ export function SessionRecapPage() {
 
     load();
   }, [id, location.state, navigate, showToast]);
+
+  // Coach IA — appeler après la séance
+  useEffect(() => {
+    if (!detail || !user || !user.profile || !cycleDay || !cycleLength) return;
+
+    async function loadCoach() {
+      setCoachState('loading');
+
+      const payload = buildAfterPayload(
+        user.profile!,
+        detail.cycle_phase,
+        detail.cycle_day ?? cycleDay.cycleDay,
+        cycleLength,
+        detail
+      );
+
+      const result = await sendToCoach(payload, user.id, detail.session_id, detail.id);
+
+      if (result.data) {
+        setCoachSummary(result.data.summary);
+        setCoachDetail(result.data.detail);
+        setCoachState('ready');
+      } else {
+        setCoachState('idle');
+      }
+    }
+
+    loadCoach();
+  }, [detail, user, cycleDay, cycleLength]);
 
   if (loading) {
     return (
@@ -381,6 +420,11 @@ export function SessionRecapPage() {
             {recapMessage}
           </p>
         </div>
+      )}
+
+      {/* Coach IA — analyse après séance */}
+      {user?.profile?.cycle_tracking && (
+        <AICoachCard type="after_session" state={coachState} summary={coachSummary} detail={coachDetail} />
       )}
 
       {/* Victoires */}

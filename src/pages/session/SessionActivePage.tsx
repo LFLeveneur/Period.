@@ -7,17 +7,20 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
 import { getSessionById } from '@/services/programService';
 import { getExerciseHistory } from '@/services/sessionHistoryService';
+import { getCoachAdvice } from '@/services/aiCoachService';
 import { SessionTimer } from '@/components/session/SessionTimer';
 import { RestTimer } from '@/components/session/RestTimer';
 import { ExerciseZone } from '@/components/session/ExerciseZone';
 import { ExerciseNav } from '@/components/session/ExerciseNav';
 import { FeelingModal } from '@/components/session/FeelingModal';
+import { AICoachCard } from '@/components/AICoachCard';
 import { Modal } from '@/components/ui/Modal';
 import { CYCLE_ADVICE } from '@/constants/session';
 import { PHASE_DISPLAY_CONFIG } from '@/utils/phaseConfig';
 import type { SessionWithExercises } from '@/services/programService';
 import type { ExerciseHistoryEntry, WorkoutFeeling, ActiveSetData } from '@/types/workout';
 import type { CyclePhaseDisplay } from '@/types/cycle';
+import type { AICoachState, BeforeSessionAdvice } from '@/types/aiCoach';
 import * as analytics from '@/lib/analytics';
 
 export function SessionActivePage() {
@@ -46,6 +49,10 @@ export function SessionActivePage() {
   const [noSetsWarningOpen, setNoSetsWarningOpen] = useState(false);
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(60);
+  const [coachState, setCoachState] = useState<AICoachState>('loading');
+  const [coachSummary, setCoachSummary] = useState<string>();
+  const [coachDetail, setCoachDetail] = useState<BeforeSessionAdvice>();
+  const [coachRetryCount, setCoachRetryCount] = useState(0);
 
   // Targets pour le calcul du score de performance
   const sessionTargetsRef = useRef<Record<string, import('@/types/workout').SetTarget[]>>({});
@@ -106,6 +113,40 @@ export function SessionActivePage() {
 
     load();
   }, [id, user, state]);
+
+  // Coach IA — récupérer depuis la base (appelé depuis SessionPreviewPage)
+  useEffect(() => {
+    if (!sessionData || !user || coachRetryCount > 1) return;
+
+    async function loadCoach() {
+      const { data, error } = await getCoachAdvice(user.id, 'before_session', sessionData.session.id, null);
+
+      if (data) {
+        setCoachSummary(data.summary);
+        setCoachDetail(data.detail);
+        setCoachState('ready');
+      } else if (coachRetryCount === 0) {
+        // Premier appel vide → retry après 3 secondes
+        setCoachState('loading');
+        setCoachRetryCount(1);
+      } else {
+        // Deuxième appel toujours vide → idle
+        setCoachState('idle');
+      }
+    }
+
+    loadCoach();
+  }, [sessionData, user, coachRetryCount]);
+
+  // Retry du Coach IA après délai
+  useEffect(() => {
+    if (coachRetryCount === 1 && coachState === 'loading') {
+      const timer = setTimeout(() => {
+        setCoachRetryCount(2);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [coachRetryCount, coachState]);
 
   // Exercice courant
   const currentExerciseData = sessionData?.exercises.find(
@@ -354,6 +395,13 @@ export function SessionActivePage() {
             {phaseAdvice}
           </p>
         </motion.div>
+      )}
+
+      {/* Coach IA — analyse avant séance */}
+      {user?.profile?.cycle_tracking && (
+        <div style={{ padding: '0 var(--space-4)', paddingTop: phaseConfig && phaseAdvice ? 'var(--space-3)' : 0 }}>
+          <AICoachCard type="before_session" state={coachState} summary={coachSummary} detail={coachDetail} />
+        </div>
       )}
 
       {/* Barre de progression globale */}
