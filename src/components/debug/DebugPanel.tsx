@@ -68,87 +68,6 @@ export function DebugPanel() {
     }
   }, [isOpen]);
 
-  // ─── RESET ──────────────────────────────────────────────────────────────
-
-  const handleResetOnboarding = async () => {
-    if (!user) return;
-    setIsLoading(true);
-    const { error } = await debugService.resetOnboarding(user.id);
-    setIsLoading(false);
-
-    if (error) {
-      showToast(`Erreur : ${error}`, 'error');
-      console.error('[DebugPanel] resetOnboarding', error);
-    } else {
-      showToast('Onboarding réinitialisé', 'success');
-      await refreshDebugInfo();
-      // Redirige vers l'onboarding
-      setTimeout(() => navigate('/onboarding'), 500);
-    }
-  };
-
-  const handleResetHealthData = async () => {
-    if (!user) return;
-    setIsLoading(true);
-    const { error } = await debugService.resetHealthData(user.id);
-    setIsLoading(false);
-
-    if (error) {
-      showToast(`Erreur : ${error}`, 'error');
-      console.error('[DebugPanel] resetHealthData', error);
-    } else {
-      showToast('Données de cycle réinitialisées', 'success');
-      await refreshDebugInfo();
-    }
-  };
-
-  const handleResetPrograms = async () => {
-    if (!user) return;
-    setIsLoading(true);
-    const { error } = await debugService.resetPrograms(user.id);
-    setIsLoading(false);
-
-    if (error) {
-      showToast(`Erreur : ${error}`, 'error');
-      console.error('[DebugPanel] resetPrograms', error);
-    } else {
-      showToast('Programmes réinitialisés', 'success');
-      await refreshDebugInfo();
-    }
-  };
-
-  const handleResetSessionHistory = async () => {
-    if (!user) return;
-    setIsLoading(true);
-    const { error } = await debugService.resetSessionHistory(user.id);
-    setIsLoading(false);
-
-    if (error) {
-      showToast(`Erreur : ${error}`, 'error');
-      console.error('[DebugPanel] resetSessionHistory', error);
-    } else {
-      showToast('Historique réinitialisé', 'success');
-      await refreshDebugInfo();
-    }
-  };
-
-  const handleResetEverything = async () => {
-    if (!user) return;
-    setIsLoading(true);
-
-    // Exécute tous les resets
-    await debugService.resetSessionHistory(user.id);
-    await debugService.resetPrograms(user.id);
-    await debugService.resetHealthData(user.id);
-    await debugService.resetOnboarding(user.id);
-
-    setIsLoading(false);
-    showToast('Tout a été réinitialisé', 'success');
-    await refreshDebugInfo();
-
-    // Redirige vers l'onboarding
-    setTimeout(() => navigate('/onboarding'), 500);
-  };
 
   // ─── SEED ────────────────────────────────────────────────────────────────
 
@@ -238,12 +157,6 @@ export function DebugPanel() {
     opacity: isLoading ? 0.6 : 1,
     fontFamily: 'var(--font-family)',
     transition: 'background-color var(--duration-fast)',
-  };
-
-  const dangerButtonStyle: React.CSSProperties = {
-    ...debugButtonStyle,
-    backgroundColor: '#fee',
-    borderColor: '#dbb',
   };
 
   const infoBoxStyle: React.CSSProperties = {

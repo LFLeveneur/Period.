@@ -278,7 +278,7 @@ export function ProgramsPage() {
             créer un programme
           </PrimaryButton>
           <PrimaryButton variant="secondary" onClick={() => navigate('/programs/import')}>
-            importer via Make
+            importer mon programme
           </PrimaryButton>
         </div>
       ) : (

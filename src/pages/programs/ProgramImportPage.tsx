@@ -1,6 +1,6 @@
 // Page import de programme via Make — 3 étapes : saisie → chargement → vérification
 import { useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
@@ -18,9 +18,11 @@ const IMAGE_TYPES = ['image/png', 'image/jpeg'];
 
 export function ProgramImportPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthContext();
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fromOnboarding = (location.state as { from?: string })?.from === 'onboarding';
 
   // ─── État global ──────────────────────────────────────────────────────────
   const [step, setStep] = useState<Step>('input');
@@ -134,8 +136,13 @@ export function ProgramImportPage() {
     }
 
     showToast('Programme importé 🖤', 'success');
-    navigate(`/programs/${programId}`);
-  }, [user, makeResponse, programName, programDesc, durationWeeks, navigate, showToast]);
+    // Si on vient de l'onboarding, retourner à la Step 3
+    if (fromOnboarding) {
+      navigate('/onboarding?importDone=true', { replace: true });
+    } else {
+      navigate(`/programs/${programId}`);
+    }
+  }, [user, makeResponse, programName, programDesc, durationWeeks, navigate, showToast, fromOnboarding]);
 
   // ─── Rendu ────────────────────────────────────────────────────────────────
 
@@ -301,7 +308,7 @@ export function ProgramImportPage() {
                 Analyse en cours…
               </p>
               <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
-                Make génère ton programme avec l'IA
+                Je génère ton programme
               </p>
             </div>
           </motion.div>
@@ -318,7 +325,7 @@ export function ProgramImportPage() {
             style={{ padding: 'var(--space-4)', paddingBottom: 'var(--space-16)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}
           >
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
-              Vérifie les informations générées par l'IA avant d'enregistrer.
+              Vérifie les informations générées avant d'enregistrer.
             </p>
 
             {/* Champs éditables */}

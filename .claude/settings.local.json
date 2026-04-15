@@ -48,7 +48,8 @@
       "Bash(curl -s http://localhost:5175/@react-refresh)",
       "Bash(pkill -f \"vite|pnpm dev\")",
       "Bash(pnpm tsc:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(git commit -m 'fix: remove unused debug handler functions:*)"
     ]
   }
 }
