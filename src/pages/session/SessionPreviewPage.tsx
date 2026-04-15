@@ -480,15 +480,15 @@ export function SessionPreviewPage() {
               transition={{ type: 'spring', damping: 20, stiffness: 300 }}
               style={{
                 position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
+                top: '20%',
+                left: 'var(--space-4)',
+                right: 'var(--space-4)',
+                transform: 'translateY(-50%)',
                 backgroundColor: 'var(--color-surface)',
                 borderRadius: '24px',
                 padding: 'var(--space-6)',
-                maxWidth: '90%',
-                width: '100%',
                 maxHeight: '80vh',
+                overflowY: 'auto',
                 zIndex: 101,
                 boxShadow: '0 20px 60px rgba(47, 0, 87, 0.3)',
               }}
@@ -498,8 +498,7 @@ export function SessionPreviewPage() {
                   fontSize: 'var(--text-xl)',
                   fontWeight: 800,
                   color: 'var(--color-text)',
-                  marginBottom: 'var(--space-3)',
-                  margin: 0,
+                  margin: '0 0 var(--space-3) 0',
                 }}
               >
                 ✨ Vous l'avez déjà faite !
@@ -508,8 +507,7 @@ export function SessionPreviewPage() {
                 style={{
                   fontSize: 'var(--text-base)',
                   color: 'var(--color-text-muted)',
-                  marginBottom: 'var(--space-6)',
-                  margin: '0 0 var(--space-6)',
+                  margin: '0 0 var(--space-6) 0',
                   lineHeight: 1.6,
                 }}
               >
