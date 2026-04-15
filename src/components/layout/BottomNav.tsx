@@ -1,6 +1,7 @@
 // Navigation du bas — présente sur toutes les pages protégées avec AppLayout
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
+import { Heart, CalendarDays, BarChart3, User, Activity } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getNextSessionId } from '@/services/homeService';
 
@@ -8,14 +9,14 @@ import { getNextSessionId } from '@/services/homeService';
 interface NavTab {
   label: string;
   path: string;
-  icon: string;
+  icon: React.ComponentType<{ size: number; strokeWidth: number }>;
 }
 
 const TABS: NavTab[] = [
-  { label: 'cycle', path: '/home', icon: '◎' },
-  { label: 'calendrier', path: '/calendar', icon: '📅' },
-  { label: 'historique', path: '/history', icon: '📋' },
-  { label: 'profil', path: '/profile', icon: '👤' },
+  { label: 'cycle', path: '/home', icon: Heart },
+  { label: 'calendrier', path: '/calendar', icon: CalendarDays },
+  { label: 'historique', path: '/history', icon: BarChart3 },
+  { label: 'profil', path: '/profile', icon: User },
 ];
 
 export function BottomNav() {
@@ -68,31 +69,34 @@ export function BottomNav() {
       }}
     >
       {/* Onglets gauches */}
-      {leftTabs.map(tab => (
-        <button
-          key={tab.path}
-          onClick={() => navigate(tab.path)}
-          className="tappable"
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '2px',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 'var(--space-1)',
-            fontFamily: 'var(--font-family)',
-            color: isActive(tab.path) ? 'var(--color-primary)' : 'var(--color-text-muted)',
-          }}
-        >
-          <span style={{ fontSize: 'var(--text-xl)' }} aria-hidden="true">{tab.icon}</span>
-          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)' as React.CSSProperties['fontWeight'] }}>
-            {tab.label}
-          </span>
-        </button>
-      ))}
+      {leftTabs.map(tab => {
+        const Icon = tab.icon;
+        return (
+          <button
+            key={tab.path}
+            onClick={() => navigate(tab.path)}
+            className="tappable"
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '2px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 'var(--space-1)',
+              fontFamily: 'var(--font-family)',
+              color: isActive(tab.path) ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            }}
+          >
+            <Icon size={24} strokeWidth={2} aria-hidden="true" />
+            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)' as React.CSSProperties['fontWeight'] }}>
+              {tab.label}
+            </span>
+          </button>
+        );
+      })}
 
       {/* Bouton central séance — surélevé */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
@@ -110,42 +114,44 @@ export function BottomNav() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 'var(--text-xl)',
             boxShadow: 'var(--shadow-lg)',
             transform: 'translateY(-8px)',
             color: 'var(--color-text-light)',
           }}
         >
-          ▶
+          <Activity size={24} strokeWidth={2} />
         </button>
       </div>
 
       {/* Onglets droits */}
-      {rightTabs.map(tab => (
-        <button
-          key={tab.path}
-          onClick={() => navigate(tab.path)}
-          className="tappable"
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '2px',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 'var(--space-1)',
-            fontFamily: 'var(--font-family)',
-            color: isActive(tab.path) ? 'var(--color-primary)' : 'var(--color-text-muted)',
-          }}
-        >
-          <span style={{ fontSize: 'var(--text-xl)' }} aria-hidden="true">{tab.icon}</span>
-          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)' as React.CSSProperties['fontWeight'] }}>
-            {tab.label}
-          </span>
-        </button>
-      ))}
+      {rightTabs.map(tab => {
+        const Icon = tab.icon;
+        return (
+          <button
+            key={tab.path}
+            onClick={() => navigate(tab.path)}
+            className="tappable"
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '2px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 'var(--space-1)',
+              fontFamily: 'var(--font-family)',
+              color: isActive(tab.path) ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            }}
+          >
+            <Icon size={24} strokeWidth={2} aria-hidden="true" />
+            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)' as React.CSSProperties['fontWeight'] }}>
+              {tab.label}
+            </span>
+          </button>
+        );
+      })}
     </nav>
   );
 }
