@@ -1,7 +1,7 @@
 // Page d'onboarding — nouveau design avec icônes, cards de sélection et transitions fluides
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { User, Calendar as CalendarIcon, Download, ArrowRight, Check, AlertCircle, ChevronLeft } from 'lucide-react';
+import { User, Calendar as CalendarIcon, Download, ArrowRight, Check, AlertCircle, ChevronLeft, Sparkles, Zap, TrendingUp } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { updateProfile } from '@/services/profileService';
 import { saveHealthData } from '@/services/healthDataService';
@@ -14,8 +14,8 @@ export function OnboardingPage() {
   const { user, profile } = useAuthContext();
   const [searchParams] = useSearchParams();
 
-  // Étape courante (1 à 3)
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  // Étape courante (0 à 3)
+  const [currentStep, setCurrentStep] = useState<0 | 1 | 2 | 3>(0);
 
   // Step 1 — prénom
   const [name, setName] = useState('');
@@ -65,7 +65,7 @@ export function OnboardingPage() {
   const showCycleDiff = cycleDiff !== null;
   const isCycleDiffNormal = cycleDiff !== null && cycleDiff >= 15 && cycleDiff <= 45;
 
-  function goToStep(step: 1 | 2 | 3) {
+  function goToStep(step: 0 | 1 | 2 | 3) {
     setErrorMessage('');
     setCurrentStep(step);
   }
@@ -149,6 +149,7 @@ export function OnboardingPage() {
 
   // Icône selon l'étape courante
   const stepIcons = [
+    <Sparkles key="sparkles" size={28} />,
     <User key="user" size={28} />,
     <CalendarIcon key="cal" size={28} />,
     <Download key="download" size={28} />,
@@ -206,25 +207,235 @@ export function OnboardingPage() {
             textTransform: 'uppercase',
           }}
         >
-          Étape {currentStep}/3
+          Étape {currentStep}/4
         </span>
 
         {/* Placeholder pour centrer le compteur */}
         <div style={{ width: '40px' }} />
       </header>
 
-      {/* Slider — les 3 steps côte à côte */}
+      {/* Slider — les 4 steps côte à côte */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <div
           style={{
             display: 'flex',
-            width: '300%',
-            transform: `translateX(-${(currentStep - 1) * 33.333}%)`,
+            width: '400%',
+            transform: `translateX(-${currentStep * 25}%)`,
             transition: `transform var(--duration-slow) ease-in-out`,
             alignItems: 'flex-start',
             height: '100%',
           }}
         >
+
+          {/* ─── Step 0 — Introduction ─── */}
+          <div
+            style={{
+              width: 'calc(100% / 3)',
+              padding: 'var(--space-6) var(--space-4) 120px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-8)',
+              boxSizing: 'border-box',
+            }}
+          >
+            {/* Badge icône + titre */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+              <div
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: 'var(--radius-xl)',
+                  backgroundColor: 'var(--color-primary-light)',
+                  color: 'var(--color-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {stepIcons[0]}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                <h1
+                  style={{
+                    fontSize: 'var(--text-3xl)',
+                    fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+                    color: 'var(--color-text)',
+                    margin: 0,
+                    lineHeight: 'var(--leading-tight)',
+                  }}
+                >
+                  ton cycle, <span style={{ color: 'var(--color-primary)' }}>ta force.</span>
+                </h1>
+                <p
+                  style={{
+                    fontSize: 'var(--text-base)',
+                    color: 'var(--color-text-muted)',
+                    margin: 0,
+                    lineHeight: 'var(--leading-relaxed)',
+                  }}
+                >
+                  entraîne-toi en harmonie avec tes phases hormonales.
+                </p>
+              </div>
+            </div>
+
+            {/* Three Value Prop Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {/* Card 1 */}
+              <div
+                style={{
+                  padding: 'var(--space-4)',
+                  borderRadius: 'var(--radius-lg)',
+                  backgroundColor: 'rgba(197, 132, 238, 0.08)',
+                  border: '1px solid rgba(197, 132, 238, 0.15)',
+                  display: 'flex',
+                  gap: 'var(--space-3)',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: 'var(--radius-lg)',
+                    backgroundColor: 'var(--color-primary)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Zap size={20} />
+                </div>
+                <div>
+                  <h3
+                    style={{
+                      fontSize: 'var(--text-sm)',
+                      fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+                      color: 'var(--color-text)',
+                      margin: '0 0 var(--space-1)',
+                    }}
+                  >
+                    recommandations adaptées
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: 'var(--text-xs)',
+                      color: 'var(--color-text-muted)',
+                      margin: 0,
+                      lineHeight: 'var(--leading-relaxed)',
+                    }}
+                  >
+                    reçois des conseils pour chaque phase
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 2 */}
+              <div
+                style={{
+                  padding: 'var(--space-4)',
+                  borderRadius: 'var(--radius-lg)',
+                  backgroundColor: 'rgba(197, 132, 238, 0.08)',
+                  border: '1px solid rgba(197, 132, 238, 0.15)',
+                  display: 'flex',
+                  gap: 'var(--space-3)',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: 'var(--radius-lg)',
+                    backgroundColor: 'var(--color-primary)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <TrendingUp size={20} />
+                </div>
+                <div>
+                  <h3
+                    style={{
+                      fontSize: 'var(--text-sm)',
+                      fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+                      color: 'var(--color-text)',
+                      margin: '0 0 var(--space-1)',
+                    }}
+                  >
+                    suivi progressif
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: 'var(--text-xs)',
+                      color: 'var(--color-text-muted)',
+                      margin: 0,
+                      lineHeight: 'var(--leading-relaxed)',
+                    }}
+                  >
+                    aligne tes entraînements pour progresser
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 3 */}
+              <div
+                style={{
+                  padding: 'var(--space-4)',
+                  borderRadius: 'var(--radius-lg)',
+                  backgroundColor: 'rgba(197, 132, 238, 0.08)',
+                  border: '1px solid rgba(197, 132, 238, 0.15)',
+                  display: 'flex',
+                  gap: 'var(--space-3)',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: 'var(--radius-lg)',
+                    backgroundColor: 'var(--color-primary)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Check size={20} />
+                </div>
+                <div>
+                  <h3
+                    style={{
+                      fontSize: 'var(--text-sm)',
+                      fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+                      color: 'var(--color-text)',
+                      margin: '0 0 var(--space-1)',
+                    }}
+                  >
+                    à l'écoute de ton corps
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: 'var(--text-xs)',
+                      color: 'var(--color-text-muted)',
+                      margin: 0,
+                      lineHeight: 'var(--leading-relaxed)',
+                    }}
+                  >
+                    découvre comment ton cycle impacte tes performances
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* ─── Step 1 — prénom ─── */}
           <div
@@ -251,7 +462,7 @@ export function OnboardingPage() {
                   justifyContent: 'center',
                 }}
               >
-                {stepIcons[0]}
+                {stepIcons[1]}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
@@ -323,7 +534,7 @@ export function OnboardingPage() {
                   justifyContent: 'center',
                 }}
               >
-                {stepIcons[1]}
+                {stepIcons[2]}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
@@ -482,7 +693,7 @@ export function OnboardingPage() {
                   justifyContent: 'center',
                 }}
               >
-                {stepIcons[2]}
+                {stepIcons[3]}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
@@ -533,74 +744,74 @@ export function OnboardingPage() {
                     transition: `opacity var(--duration-normal), transform var(--duration-fast)`,
                   }}
                 >
-                <span
-                  style={{
-                    fontSize: 'var(--text-base)',
-                    fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
-                  }}
-                >
-                  importer mon programme
-                </span>
-                <Download size={20} />
-              </button>
-
-              {/* Option plus tard */}
-              <button
-                onClick={() => setImportNow(false)}
-                style={{
-                  width: '100%',
-                  padding: 'var(--space-5)',
-                  borderRadius: 'var(--radius-xl)',
-                  border: `2px solid ${importNow === false ? 'var(--color-text)' : 'var(--color-border)'}`,
-                  backgroundColor: importNow === false ? 'rgba(47, 0, 87, 0.05)' : 'var(--color-surface)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-4)',
-                  transition: `border-color var(--duration-normal), background-color var(--duration-normal)`,
-                }}
-              >
-                <div
-                  style={{
-                    width: '22px',
-                    height: '22px',
-                    borderRadius: 'var(--radius-full)',
-                    border: `2px solid ${importNow === false ? 'var(--color-text)' : 'var(--color-border)'}`,
-                    backgroundColor: importNow === false ? 'var(--color-text)' : 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    transition: `all var(--duration-normal)`,
-                  }}
-                >
-                  {importNow === false && <Check size={13} color="white" strokeWidth={3} />}
-                </div>
-                <div>
                   <span
                     style={{
                       fontSize: 'var(--text-base)',
                       fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
-                      color: 'var(--color-text)',
-                      display: 'block',
                     }}
                   >
-                    plus tard
+                    importer mon programme
                   </span>
-                  <span
+                  <Download size={20} />
+                </button>
+
+                {/* Option plus tard */}
+                <button
+                  onClick={() => setImportNow(false)}
+                  style={{
+                    width: '100%',
+                    padding: 'var(--space-5)',
+                    borderRadius: 'var(--radius-xl)',
+                    border: `2px solid ${importNow === false ? 'var(--color-text)' : 'var(--color-border)'}`,
+                    backgroundColor: importNow === false ? 'rgba(47, 0, 87, 0.05)' : 'var(--color-surface)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-4)',
+                    transition: `border-color var(--duration-normal), background-color var(--duration-normal)`,
+                  }}
+                >
+                  <div
                     style={{
-                      fontSize: 'var(--text-sm)',
-                      color: 'var(--color-text-muted)',
-                      display: 'block',
-                      marginTop: 'var(--space-1)',
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: 'var(--radius-full)',
+                      border: `2px solid ${importNow === false ? 'var(--color-text)' : 'var(--color-border)'}`,
+                      backgroundColor: importNow === false ? 'var(--color-text)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      transition: `all var(--duration-normal)`,
                     }}
                   >
-                    tu créeras un programme depuis ta page d'accueil
-                  </span>
-                </div>
-              </button>
-            </div>
+                    {importNow === false && <Check size={13} color="white" strokeWidth={3} />}
+                  </div>
+                  <div>
+                    <span
+                      style={{
+                        fontSize: 'var(--text-base)',
+                        fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+                        color: 'var(--color-text)',
+                        display: 'block',
+                      }}
+                    >
+                      plus tard
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 'var(--text-sm)',
+                        color: 'var(--color-text-muted)',
+                        display: 'block',
+                        marginTop: 'var(--space-1)',
+                      }}
+                    >
+                      tu créeras un programme depuis ta page d'accueil
+                    </span>
+                  </div>
+                </button>
+              </div>
             ) : (
               /* Après import — afficher le message de succès */
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-6)', paddingTop: 'var(--space-4)' }}>
@@ -663,6 +874,33 @@ export function OnboardingPage() {
           zIndex: 'var(--z-nav)' as React.CSSProperties['zIndex'],
         }}
       >
+        {currentStep === 0 && (
+          <button
+            onClick={() => goToStep(1)}
+            style={{
+              width: '100%',
+              height: '56px',
+              borderRadius: 'var(--radius-xl)',
+              backgroundColor: 'var(--color-text)',
+              color: 'var(--color-text-light)',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 'var(--text-base)',
+              fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingLeft: 'var(--space-6)',
+              paddingRight: 'var(--space-6)',
+              boxShadow: 'var(--shadow-xl)',
+              transition: `opacity var(--duration-normal), transform var(--duration-fast)`,
+            }}
+          >
+            <span>commencer</span>
+            <ArrowRight size={20} />
+          </button>
+        )}
+
         {currentStep === 1 && (
           <button
             onClick={handleStep1Submit}
