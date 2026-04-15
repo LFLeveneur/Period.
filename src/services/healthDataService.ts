@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 
 /**
  * Sauvegarde le premier jour des règles (J1 du cycle).
- * Insère ou met à jour une ligne dans health_data avec cycle_day = 1 et phase = 'menstrual'.
+ * Remplace la ligne J1 la plus récente existante ou en insère une nouvelle.
  * C'est la ligne de référence que cyclePredictionService utilise pour calculer les autres jours.
  */
 export async function saveHealthData(
@@ -13,13 +13,14 @@ export async function saveHealthData(
   cycleLength: number,
   periodLength: number
 ): Promise<{ error: string | null }> {
-  // Vérifie si une ligne existe déjà pour ce jour du cycle
-  const { data: existing } = await supabase
+  // Récupère la ligne J1 existante la plus récente
+  const { data: latestJ1 } = await supabase
     .from('health_data')
-    .select('id')
+    .select('last_period_date')
     .eq('user_id', userId)
-    .eq('last_period_date', lastPeriodDate)
     .eq('cycle_day', 1)
+    .order('last_period_date', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   const dataToSave = {
@@ -32,19 +33,22 @@ export async function saveHealthData(
     ovulation_day: cycleLength - 14,
   };
 
-  if (existing) {
-    // Met à jour la ligne existante
-    const { error } = await supabase
+  if (latestJ1) {
+    // Supprime l'ancienne ligne et insère la nouvelle
+    // (Pour éviter d'avoir plusieurs lignes J1 si l'utilisatrice change ses dates)
+    const { error: deleteError } = await supabase
       .from('health_data')
-      .update(dataToSave)
+      .delete()
       .eq('user_id', userId)
-      .eq('last_period_date', lastPeriodDate);
-    if (error) return { error: error.message };
-  } else {
-    // Insère une nouvelle ligne
-    const { error } = await supabase.from('health_data').insert(dataToSave);
-    if (error) return { error: error.message };
+      .eq('last_period_date', latestJ1.last_period_date)
+      .eq('cycle_day', 1);
+
+    if (deleteError) return { error: deleteError.message };
   }
+
+  // Insère la nouvelle ligne
+  const { error } = await supabase.from('health_data').insert(dataToSave);
+  if (error) return { error: error.message };
 
   return { error: null };
 }
