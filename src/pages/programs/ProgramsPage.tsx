@@ -187,9 +187,9 @@ export function ProgramsPage() {
               letterSpacing: '0.08em',
             }}
           >
-            Importer via Make
+            Importer ton programme
           </span>
-          <span>Programme prêt en quelques secondes →</span>
+          <span>Ton programme existant importé en quelques secondes (une image, ou description suffit) →</span>
         </div>
         <span style={{ fontSize: '20px' }}>⚡</span>
       </button>

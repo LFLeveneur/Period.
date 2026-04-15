@@ -19,7 +19,7 @@ export function DebugPanel() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const toastContext = useContext(ToastContext);
-  const showToast = toastContext?.showToast ?? (() => {});
+  const showToast = toastContext?.showToast ?? (() => { });
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -394,10 +394,10 @@ export function DebugPanel() {
                 </div>
               </div>
             ) || (
-              <div style={{ fontStyle: 'italic', color: '#666', marginBottom: 'var(--space-2)' }}>
-                No health data
-              </div>
-            )}
+                <div style={{ fontStyle: 'italic', color: '#666', marginBottom: 'var(--space-2)' }}>
+                  No health data
+                </div>
+              )}
 
             {debugInfo.activeProgram ? (
               <div>
@@ -410,7 +410,7 @@ export function DebugPanel() {
           </div>
 
           {/* ─── RESET DONNÉES ────────────────────────────────────────── */}
-          <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold', marginTop: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>
+          {/* <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold', marginTop: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>
             🗑️ Reset des données
           </h2>
 
@@ -428,7 +428,7 @@ export function DebugPanel() {
           </button>
           <button onClick={handleResetEverything} style={dangerButtonStyle} disabled={isLoading}>
             ⚠️ Reset TOUT
-          </button>
+          </button> */}
 
           {/* ─── SEED DONNÉES ────────────────────────────────────────── */}
           <h2 style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold', marginTop: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>

@@ -187,7 +187,6 @@ export function ProgramImportPage() {
           >
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
               Décris ton programme en texte libre, colle un plan existant ou upload un fichier.
-              L'IA Make va structurer tout ça pour toi.
             </p>
 
             {/* Textarea */}

@@ -746,6 +746,11 @@ export function ProfilePage() {
                   détail →
                 </PrimaryButton>
               </div>
+              <div style={{ padding: 'var(--space-3) var(--space-4)', borderTop: '1px solid var(--color-border)' }}>
+                <PrimaryButton variant="secondary" size="sm" onClick={() => navigate('/programs')} style={{ width: '100%' }}>
+                  voir mes programmes →
+                </PrimaryButton>
+              </div>
             </>
           ) : (
             <>
