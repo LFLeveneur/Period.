@@ -76,6 +76,13 @@ export interface PhaseDistribution {
   count: number;
 }
 
+/** Statistiques de vues par page */
+export interface PageViewStat {
+  path: string;
+  views: number;
+  unique_users: number;
+}
+
 /** Résumé admin d'un utilisateur — profil + activité agrégée */
 export interface AdminUserSummary {
   user_id: string;

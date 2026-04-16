@@ -8,6 +8,7 @@ import type {
   ActivationKpis,
   RetentionKpis,
   PhaseDistribution,
+  PageViewStat,
   AdminUserSummary,
   UserDetail,
   AnalyticsEvent,
@@ -371,6 +372,51 @@ export async function getRetentionKpis(excludeUserIds: string[] = []): Promise<{
   } catch (err) {
     console.error('[analyticsService] getRetentionKpis', err);
     return { data: null, error: 'Erreur lors de la récupération de la rétention.' };
+  }
+}
+
+/**
+ * Récupère les statistiques de vues par page (path dans metadata).
+ * Trie par nombre de vues décroissant.
+ * Requiert le rôle admin (RLS).
+ */
+export async function getPageViewStats(excludeUserIds: string[] = []): Promise<{
+  data: PageViewStat[] | null;
+  error: string | null;
+}> {
+  try {
+    let query = supabase
+      .from('events')
+      .select('user_id, metadata')
+      .eq('event_type', 'page_viewed')
+      .not('metadata', 'is', null);
+
+    if (excludeUserIds.length > 0) {
+      query = query.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
+    }
+
+    const { data, error } = await query;
+    if (error) return { data: null, error: error.message };
+
+    // Agrège les vues par path côté client
+    const statsMap: Record<string, { views: number; users: Set<string> }> = {};
+
+    for (const row of data ?? []) {
+      const path = (row.metadata as Record<string, unknown>)?.path as string | undefined;
+      if (!path) continue;
+      if (!statsMap[path]) statsMap[path] = { views: 0, users: new Set() };
+      statsMap[path].views++;
+      statsMap[path].users.add(row.user_id);
+    }
+
+    const result: PageViewStat[] = Object.entries(statsMap)
+      .map(([path, { views, users }]) => ({ path, views, unique_users: users.size }))
+      .sort((a, b) => b.views - a.views);
+
+    return { data: result, error: null };
+  } catch (err) {
+    console.error('[analyticsService] getPageViewStats', err);
+    return { data: null, error: 'Erreur lors de la récupération des pages vues.' };
   }
 }
 

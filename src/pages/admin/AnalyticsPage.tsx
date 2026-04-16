@@ -7,6 +7,7 @@ import {
   getActivationKpis,
   getRetentionKpis,
   getPhaseDistribution,
+  getPageViewStats,
   getFeedbackList,
   getAdminUserList,
   getNPSList,
@@ -15,6 +16,7 @@ import type {
   ActivationKpis,
   RetentionKpis,
   PhaseDistribution,
+  PageViewStat,
   FeedbackEntry,
   AdminUserSummary,
   NPSEntry,
@@ -123,6 +125,7 @@ export function AnalyticsPage() {
   const [activation, setActivation] = useState<ActivationKpis | null>(null);
   const [retention, setRetention] = useState<RetentionKpis | null>(null);
   const [phases, setPhases] = useState<PhaseDistribution[] | null>(null);
+  const [pageViews, setPageViews] = useState<PageViewStat[] | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackEntry[] | null>(null);
   const [npsScores, setNpsScores] = useState<NPSEntry[] | null>(null);
 
@@ -155,20 +158,22 @@ export function AnalyticsPage() {
       setUsers(usersRes.data ?? []);
 
       // Puis les KPIs en excluant les users de test
-      const [actRes, retRes, phaseRes, fbRes, npsRes] = await Promise.all([
+      const [actRes, retRes, phaseRes, pvRes, fbRes, npsRes] = await Promise.all([
         getActivationKpis(testUserIds),
         getRetentionKpis(testUserIds),
         getPhaseDistribution(testUserIds),
+        getPageViewStats(testUserIds),
         getFeedbackList(30),
         getNPSList(50, testUserIds),
       ]);
 
-      const firstError = usersRes.error ?? actRes.error ?? retRes.error ?? phaseRes.error ?? fbRes.error ?? npsRes.error ?? null;
+      const firstError = usersRes.error ?? actRes.error ?? retRes.error ?? phaseRes.error ?? pvRes.error ?? fbRes.error ?? npsRes.error ?? null;
       setError(firstError);
 
       setActivation(actRes.data);
       setRetention(retRes.data);
       setPhases(phaseRes.data);
+      setPageViews(pvRes.data);
       setFeedbacks(fbRes.data);
       setNpsScores(npsRes.data);
       setDataLoading(false);
@@ -182,15 +187,17 @@ export function AnalyticsPage() {
     setUsers(updatedUsers);
     const testUserIds = updatedUsers.filter((u) => u.is_test_user).map((u) => u.user_id);
 
-    const [actRes, retRes, phaseRes] = await Promise.all([
+    const [actRes, retRes, phaseRes, pvRes] = await Promise.all([
       getActivationKpis(testUserIds),
       getRetentionKpis(testUserIds),
       getPhaseDistribution(testUserIds),
+      getPageViewStats(testUserIds),
     ]);
 
     setActivation(actRes.data);
     setRetention(retRes.data);
     setPhases(phaseRes.data);
+    setPageViews(pvRes.data);
   };
 
   if (authLoading || !user || !profile?.is_admin) return null;
@@ -257,6 +264,7 @@ export function AnalyticsPage() {
           activation={activation}
           retention={retention}
           phases={phases}
+          pageViews={pageViews}
           feedbacks={feedbacks}
           npsScores={npsScores}
           testUserCount={testUserCount}
@@ -281,10 +289,38 @@ const sectionTitleStyle: React.CSSProperties = {
 };
 
 /** Onglet dashboard — KPIs + phases + feedbacks + NPS */
+/** Nom lisible d'une route à partir de son path */
+function pageLabel(path: string): string {
+  const labels: Record<string, string> = {
+    '/home': 'Accueil',
+    '/calendar': 'Calendrier',
+    '/history': 'Historique',
+    '/profile': 'Profil',
+    '/programs': 'Programmes',
+    '/programs/new': 'Nouveau programme',
+    '/programs/import': 'Import programme',
+    '/exercises': 'Bibliothèque',
+    '/onboarding': 'Onboarding',
+    '/onboarding/reveal': 'Révélation',
+    '/login': 'Connexion',
+    '/signup': 'Inscription',
+  };
+  // Correspondance exacte d'abord, puis préfixe pour les routes dynamiques
+  if (labels[path]) return labels[path];
+  if (path.startsWith('/history/')) return 'Détail séance';
+  if (path.startsWith('/programs/') && path.endsWith('/edit')) return 'Modifier programme';
+  if (path.startsWith('/programs/')) return 'Détail programme';
+  if (path.startsWith('/session/') && path.endsWith('/preview')) return 'Aperçu séance';
+  if (path.startsWith('/session/') && path.endsWith('/active')) return 'Séance active';
+  if (path.startsWith('/session/') && path.endsWith('/recap')) return 'Récap séance';
+  return path;
+}
+
 function DashboardTab({
   activation,
   retention,
   phases,
+  pageViews,
   feedbacks,
   npsScores,
   testUserCount,
@@ -292,6 +328,7 @@ function DashboardTab({
   activation: ActivationKpis | null;
   retention: RetentionKpis | null;
   phases: PhaseDistribution[] | null;
+  pageViews: PageViewStat[] | null;
   feedbacks: FeedbackEntry[] | null;
   npsScores: NPSEntry[] | null;
   testUserCount: number;
@@ -340,6 +377,49 @@ function DashboardTab({
           <KpiCard label="Total" value={retention?.total_users ?? 0} sub="inscrites" />
         </div>
       </section>
+
+      {/* Pages les plus vues */}
+      {pageViews && pageViews.length > 0 && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <h2 style={sectionTitleStyle}>Pages vues ({pageViews.reduce((s, p) => s + p.views, 0)} vues totales)</h2>
+          <div
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              borderRadius: 'var(--radius-xl)',
+              padding: 'var(--space-5)',
+              boxShadow: 'var(--shadow-md)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-3)',
+            }}
+          >
+            {pageViews.map(({ path, views, unique_users }) => {
+              const maxViews = pageViews[0].views;
+              const pct = maxViews > 0 ? Math.round((views / maxViews) * 100) : 0;
+              return (
+                <div key={path} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-2)' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', minWidth: 0 }}>
+                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)', fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'], overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {pageLabel(path)}
+                      </span>
+                      <code style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                        {path}
+                      </code>
+                    </div>
+                    <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--color-text)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {views} <span style={{ fontWeight: 'var(--font-normal)' as React.CSSProperties['fontWeight'], color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>vues · {unique_users} utilisatrices</span>
+                    </span>
+                  </div>
+                  <div style={{ height: '4px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--color-border)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-full)', backgroundColor: 'var(--color-primary)', transition: 'width var(--duration-slow)' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Phases du cycle */}
       {phases && phases.length > 0 && (
