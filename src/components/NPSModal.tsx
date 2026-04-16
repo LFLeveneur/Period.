@@ -1,6 +1,6 @@
 // Modal NPS — collecte un score 1-10 sur la satisfaction de l'app
 import { useState } from 'react';
-import { X, Heart } from 'lucide-react';
+import { X } from 'lucide-react';
 import { submitNPS } from '@/services/analyticsService';
 import { useToast } from '@/hooks/useToast';
 

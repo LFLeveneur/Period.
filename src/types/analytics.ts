@@ -9,7 +9,8 @@ export type EventType =
   | 'training_filled'
   | 'session_logged'
   | 'page_viewed'
-  | 'feedback_submitted';
+  | 'feedback_submitted'
+  | 'nps_submitted';
 
 /** Events trackés une seule fois par utilisatrice */
 export const ONE_TIME_EVENTS: EventType[] = [
