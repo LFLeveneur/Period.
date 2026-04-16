@@ -45,6 +45,15 @@ export interface FeedbackEntry {
   created_at: string;
 }
 
+/** Entrée d'un score NPS avec infos utilisateur */
+export interface NPSEntry {
+  id: string;
+  user_id: string;
+  nps_score: number;
+  user_name?: string | null;
+  created_at: string;
+}
+
 /** Résumé des KPIs d'activation pour le dashboard */
 export interface ActivationKpis {
   signup_started: number;
@@ -89,4 +98,5 @@ export interface AdminUserSummary {
 export interface UserDetail {
   events: AnalyticsEvent[];
   feedbacks: FeedbackEntry[];
+  nps_scores: NPSEntry[];
 }

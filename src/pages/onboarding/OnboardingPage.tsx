@@ -230,7 +230,7 @@ export function OnboardingPage() {
           {/* ─── Step 0 — Introduction ─── */}
           <div
             style={{
-              width: 'calc(100% / 3)',
+              width: 'calc(100% / 4)',
               padding: 'var(--space-6) var(--space-4) 120px',
               display: 'flex',
               flexDirection: 'column',
@@ -440,7 +440,7 @@ export function OnboardingPage() {
           {/* ─── Step 1 — prénom ─── */}
           <div
             style={{
-              width: 'calc(100% / 3)',
+              width: 'calc(100% / 4)',
               padding: 'var(--space-6) var(--space-4) 120px',
               display: 'flex',
               flexDirection: 'column',
@@ -512,7 +512,7 @@ export function OnboardingPage() {
           {/* ─── Step 2 — saisie des dates (cycle obligatoire) ─── */}
           <div
             style={{
-              width: 'calc(100% / 3)',
+              width: 'calc(100% / 4)',
               padding: 'var(--space-6) var(--space-4) 120px',
               display: 'flex',
               flexDirection: 'column',
@@ -580,7 +580,7 @@ export function OnboardingPage() {
                 min={todayMinus60}
               />
 
-              {/* Date 2 — règles précédentes */}
+              {/* Date 2 — règles précédentes (désactivé tant que date1 n'est pas remplie) */}
               <InputField
                 id="date2"
                 label="début des règles précédentes"
@@ -589,6 +589,8 @@ export function OnboardingPage() {
                 onChange={(e) => setDate2(e.target.value)}
                 max={date1Minus15 || todayMinus60}
                 min={todayMinus90}
+                disabled={!date1}
+                style={{ opacity: date1 ? 1 : 0.4 }}
               />
 
               {/* Estimation du cycle en temps réel */}
@@ -671,7 +673,7 @@ export function OnboardingPage() {
           {/* ─── Step 3 — import du programme ─── */}
           <div
             style={{
-              width: 'calc(100% / 3)',
+              width: 'calc(100% / 4)',
               padding: 'var(--space-6) var(--space-4) 120px',
               display: 'flex',
               flexDirection: 'column',

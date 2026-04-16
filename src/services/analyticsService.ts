@@ -11,6 +11,7 @@ import type {
   AdminUserSummary,
   UserDetail,
   AnalyticsEvent,
+  NPSEntry,
 } from '@/types/analytics';
 import { ONE_TIME_EVENTS } from '@/types/analytics';
 
@@ -162,6 +163,69 @@ export async function hasUserSubmittedNPS(userId: string): Promise<boolean> {
   } catch (err) {
     console.error('[analyticsService] hasUserSubmittedNPS', err);
     return false;
+  }
+}
+
+/**
+ * Récupère les scores NPS les plus récents.
+ * Requiert le rôle admin (RLS).
+ * @param limit Nombre de scores à retourner
+ * @param excludeUserIds IDs des users à exclure (ex: users de test)
+ */
+export async function getNPSList(
+  limit = 50,
+  excludeUserIds: string[] = []
+): Promise<{
+  data: NPSEntry[] | null;
+  error: string | null;
+}> {
+  try {
+    let query = supabase
+      .from('feedback')
+      .select('id, user_id, nps_score, created_at')
+      .not('nps_score', 'is', null)
+      .order('created_at', { ascending: false });
+
+    // Exclure les users de test
+    if (excludeUserIds.length > 0) {
+      query = query.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
+    }
+
+    const { data: npsData, error: npsError } = await query.limit(limit);
+
+    if (npsError) return { data: null, error: npsError.message };
+
+    // Récupère les noms des users
+    const userIds = (npsData ?? []).map((n) => n.user_id);
+    let profileMap: Record<string, string | null> = {};
+
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', userIds);
+
+      profileMap = (profiles ?? []).reduce(
+        (acc, p) => {
+          acc[p.user_id] = p.display_name;
+          return acc;
+        },
+        {} as Record<string, string | null>
+      );
+    }
+
+    const result: NPSEntry[] = (npsData ?? []).map((n) => ({
+      id: n.id,
+      user_id: n.user_id,
+      nps_score: n.nps_score,
+      user_name: profileMap[n.user_id] ?? null,
+      created_at: n.created_at,
+    }));
+
+    return { data: result, error: null };
+  } catch (err) {
+    console.error('[analyticsService] getNPSList', err);
+    return { data: null, error: 'Erreur lors de la récupération des NPS.' };
   }
 }
 
@@ -443,7 +507,7 @@ export async function toggleTestUser(
 }
 
 /**
- * Récupère le détail d'un utilisateur spécifique (events + feedbacks).
+ * Récupère le détail d'un utilisateur spécifique (events + feedbacks + NPS).
  * Requiert le rôle admin (RLS events/feedback).
  */
 export async function getUserDetail(userId: string): Promise<{
@@ -451,7 +515,7 @@ export async function getUserDetail(userId: string): Promise<{
   error: string | null;
 }> {
   try {
-    const [eventsRes, feedbackRes] = await Promise.all([
+    const [eventsRes, feedbackRes, npsRes] = await Promise.all([
       supabase
         .from('events')
         .select('id, user_id, event_type, metadata, created_at')
@@ -463,14 +527,29 @@ export async function getUserDetail(userId: string): Promise<{
         .select('id, user_id, liked, frustrated, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false }),
+      supabase
+        .from('feedback')
+        .select('id, user_id, nps_score, created_at')
+        .eq('user_id', userId)
+        .not('nps_score', 'is', null)
+        .order('created_at', { ascending: false }),
     ]);
 
     if (eventsRes.error) return { data: null, error: eventsRes.error.message };
+
+    const npsScores: NPSEntry[] = (npsRes.data ?? []).map((n) => ({
+      id: n.id,
+      user_id: n.user_id,
+      nps_score: n.nps_score,
+      user_name: undefined,
+      created_at: n.created_at,
+    }));
 
     return {
       data: {
         events: (eventsRes.data ?? []) as AnalyticsEvent[],
         feedbacks: (feedbackRes.data ?? []) as FeedbackEntry[],
+        nps_scores: npsScores,
       },
       error: null,
     };

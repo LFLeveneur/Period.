@@ -9,6 +9,7 @@ import {
   getPhaseDistribution,
   getFeedbackList,
   getAdminUserList,
+  getNPSList,
 } from '@/services/analyticsService';
 import type {
   ActivationKpis,
@@ -16,6 +17,7 @@ import type {
   PhaseDistribution,
   FeedbackEntry,
   AdminUserSummary,
+  NPSEntry,
 } from '@/types/analytics';
 import { UserListSection } from './UserListSection';
 
@@ -122,6 +124,7 @@ export function AnalyticsPage() {
   const [retention, setRetention] = useState<RetentionKpis | null>(null);
   const [phases, setPhases] = useState<PhaseDistribution[] | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackEntry[] | null>(null);
+  const [npsScores, setNpsScores] = useState<NPSEntry[] | null>(null);
 
   // Données utilisateurs
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
@@ -152,20 +155,22 @@ export function AnalyticsPage() {
       setUsers(usersRes.data ?? []);
 
       // Puis les KPIs en excluant les users de test
-      const [actRes, retRes, phaseRes, fbRes] = await Promise.all([
+      const [actRes, retRes, phaseRes, fbRes, npsRes] = await Promise.all([
         getActivationKpis(testUserIds),
         getRetentionKpis(testUserIds),
         getPhaseDistribution(testUserIds),
         getFeedbackList(30),
+        getNPSList(50, testUserIds),
       ]);
 
-      const firstError = usersRes.error ?? actRes.error ?? retRes.error ?? phaseRes.error ?? fbRes.error ?? null;
+      const firstError = usersRes.error ?? actRes.error ?? retRes.error ?? phaseRes.error ?? fbRes.error ?? npsRes.error ?? null;
       setError(firstError);
 
       setActivation(actRes.data);
       setRetention(retRes.data);
       setPhases(phaseRes.data);
       setFeedbacks(fbRes.data);
+      setNpsScores(npsRes.data);
       setDataLoading(false);
     }
 
@@ -253,6 +258,7 @@ export function AnalyticsPage() {
           retention={retention}
           phases={phases}
           feedbacks={feedbacks}
+          npsScores={npsScores}
           testUserCount={testUserCount}
         />
       ) : (
@@ -274,18 +280,20 @@ const sectionTitleStyle: React.CSSProperties = {
   letterSpacing: '0.06em',
 };
 
-/** Onglet dashboard — KPIs + phases + feedbacks */
+/** Onglet dashboard — KPIs + phases + feedbacks + NPS */
 function DashboardTab({
   activation,
   retention,
   phases,
   feedbacks,
+  npsScores,
   testUserCount,
 }: {
   activation: ActivationKpis | null;
   retention: RetentionKpis | null;
   phases: PhaseDistribution[] | null;
   feedbacks: FeedbackEntry[] | null;
+  npsScores: NPSEntry[] | null;
   testUserCount: number;
 }) {
   return (
@@ -369,6 +377,110 @@ function DashboardTab({
           </div>
         </section>
       )}
+
+      {/* Scores NPS */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <h2 style={sectionTitleStyle}>Scores NPS ({npsScores?.length ?? 0})</h2>
+        {!npsScores || npsScores.length === 0 ? (
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
+            Aucun score NPS pour l'instant.
+          </p>
+        ) : (
+          <div
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              borderRadius: 'var(--radius-xl)',
+              padding: 'var(--space-5)',
+              boxShadow: 'var(--shadow-md)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-4)',
+            }}
+          >
+            {/* Statistiques NPS */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
+              <KpiCard
+                label="Score moyen"
+                value={
+                  npsScores.length > 0
+                    ? (npsScores.reduce((sum, n) => sum + n.nps_score, 0) / npsScores.length).toFixed(1)
+                    : 0
+                }
+                sub="/10"
+              />
+              <KpiCard
+                label="Score min"
+                value={npsScores.length > 0 ? Math.min(...npsScores.map((n) => n.nps_score)) : 0}
+                sub="détracteur"
+              />
+              <KpiCard
+                label="Score max"
+                value={npsScores.length > 0 ? Math.max(...npsScores.map((n) => n.nps_score)) : 0}
+                sub="promoteur"
+              />
+            </div>
+
+            {/* Liste des scores */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {npsScores.map((nps) => {
+                const scoreColor = nps.nps_score >= 8 ? '#10B981' : nps.nps_score >= 6 ? '#F59E0B' : '#EF4444';
+                return (
+                  <div
+                    key={nps.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: 'var(--space-3)',
+                      borderRadius: 'var(--radius-lg)',
+                      backgroundColor: 'var(--color-bg)',
+                      gap: 'var(--space-3)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flex: 1 }}>
+                      <div
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: 'var(--radius-full)',
+                          backgroundColor: scoreColor,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+                          fontSize: 'var(--text-base)',
+                        }}
+                      >
+                        {nps.nps_score}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'], color: 'var(--color-text)' }}>
+                          {nps.user_name ?? 'Utilisatrice'}
+                        </span>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                          {new Date(nps.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 'var(--text-xs)',
+                        fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+                        color: scoreColor,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      {nps.nps_score >= 8 ? '✓ Promoteur' : nps.nps_score >= 6 ? '→ Neutre' : '✗ Détracteur'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Feedbacks qualitatifs */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
