@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { PageTransition } from '@/components/layout/PageTransition';
+import { NPSFloatingButton } from '@/components/NPSFloatingButton';
 import { usePageTracking } from '@/hooks/usePageTracking';
 
 export function AppLayout() {
@@ -42,6 +43,8 @@ export function AppLayout() {
         <PageTransition type="fade" />
       </main>
       <BottomNav />
+      {/* Bouton flottant NPS */}
+      <NPSFloatingButton />
     </div>
   );
 }

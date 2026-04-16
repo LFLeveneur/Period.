@@ -111,6 +111,60 @@ export async function submitFeedback(
   }
 }
 
+/**
+ * Soumet un score NPS (1-10).
+ * Retourne { error } en cas d'échec.
+ */
+export async function submitNPS(score: number): Promise<{ error: string | null }> {
+  try {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return { error: 'Utilisatrice non connectée.' };
+    }
+
+    const { error } = await supabase.from('feedback').insert({
+      user_id: authData.user.id,
+      nps_score: score,
+    });
+
+    if (error) return { error: error.message };
+
+    // Track l'event nps_submitted
+    await trackEvent('nps_submitted', { score });
+
+    return { error: null };
+  } catch (err) {
+    console.error('[analyticsService] submitNPS', err);
+    return { error: 'Une erreur est survenue.' };
+  }
+}
+
+/**
+ * Vérifie si l'utilisatrice a déjà soumis une note NPS.
+ * Retourne true si une note existe, false sinon.
+ */
+export async function hasUserSubmittedNPS(userId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('feedback')
+      .select('nps_score')
+      .eq('user_id', userId)
+      .not('nps_score', 'is', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[analyticsService] hasUserSubmittedNPS', error);
+      return false;
+    }
+
+    return !!data;
+  } catch (err) {
+    console.error('[analyticsService] hasUserSubmittedNPS', err);
+    return false;
+  }
+}
+
 // ─── Fonctions admin — lecture des KPIs ──────────────────────────────────────
 // Ces fonctions nécessitent que l'utilisatrice ait is_admin = true (RLS)
 
