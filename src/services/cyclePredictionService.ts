@@ -87,23 +87,10 @@ export async function predictPhaseForDate(
 
   let daysDiff = daysBetween(date, lastPeriodDate);
 
-  // Date antérieure au dernier début de règles — on force J1
-  if (daysDiff < 0) {
-    const phase = getCyclePhaseDisplay(1, avgPeriodLength, avgOvulationDay, avgCycleLength);
-    return {
-      phase,
-      cycleDay: 1,
-      cycleLength: avgCycleLength,
-      periodLength: avgPeriodLength,
-      ovulationDay: avgOvulationDay,
-      date,
-    };
-  }
+  // Calcule le jour du cycle (1-indexé) — fonctionne aussi pour les dates passées avec modulo euclidienne
+  const cycleDay = ((daysDiff % avgCycleLength) + avgCycleLength) % avgCycleLength + 1;
 
-  // Calcule le jour du cycle courant (1-indexé)
-  const cycleDay = (daysDiff % avgCycleLength) + 1;
-
-  if (cycleDay <= 0) {
+  if (cycleDay <= 0 || cycleDay > avgCycleLength) {
     console.error('[cyclePredictionService] cycleDay invalide :', cycleDay, 'pour la date', date);
     const phase = getCyclePhaseDisplay(1, avgPeriodLength, avgOvulationDay, avgCycleLength);
     return {
@@ -177,21 +164,8 @@ export async function predictPhasesForMonth(
     const date = toDateString(new Date(year, month - 1, day));
     const daysDiff = daysBetween(date, lastPeriodDate);
 
-    // Si la date est antérieure au dernier début de règles, on force J1
-    if (daysDiff < 0) {
-      const phase = getCyclePhaseDisplay(1, avgPeriodLength, avgOvulationDay, avgCycleLength);
-      result.push({
-        phase,
-        cycleDay: 1,
-        cycleLength: avgCycleLength,
-        periodLength: avgPeriodLength,
-        ovulationDay: avgOvulationDay,
-        date,
-      });
-      continue;
-    }
-
-    const cycleDay = (daysDiff % avgCycleLength) + 1;
+    // Calcule le jour du cycle (1-indexé) — fonctionne aussi pour les dates passées avec modulo euclidienne
+    const cycleDay = ((daysDiff % avgCycleLength) + avgCycleLength) % avgCycleLength + 1;
 
     // Sécurité : cycleDay doit être entre 1 et cycleLength
     if (cycleDay <= 0 || cycleDay > avgCycleLength) {
