@@ -242,40 +242,71 @@ export async function getActivationKpis(excludeUserIds: string[] = []): Promise<
   error: string | null;
 }> {
   try {
-    // Compte les events distincts par type — one-time events = 1 par utilisatrice
-    let query = supabase
-      .from('events')
-      .select('event_type')
-      .in('event_type', [
-        'signup_started',
-        'onboarding_completed',
-        'cycle_filled',
-        'training_filled',
-        'session_logged',
-      ]);
+    // Source de vérité pour les inscriptions : table profiles (pas les events signup_started,
+    // qui peuvent manquer pour les utilisatrices inscrites avant la mise en place du tracking)
+    let profilesQuery = supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('is_test_user', false)
+      .eq('is_admin', false);
 
     if (excludeUserIds.length > 0) {
-      query = query.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
+      profilesQuery = profilesQuery.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
     }
 
-    const { data, error } = await query;
+    const { data: profilesData, error: profilesError } = await profilesQuery;
+    if (profilesError) return { data: null, error: profilesError.message };
+
+    const totalRegistered = (profilesData ?? []).length;
+
+    // Récupère user_id + event_type pour compter les utilisatrices DISTINCTES par type d'event
+    let eventsQuery = supabase
+      .from('events')
+      .select('event_type, user_id')
+      .in('event_type', ['onboarding_completed', 'cycle_filled', 'session_logged']);
+
+    if (excludeUserIds.length > 0) {
+      eventsQuery = eventsQuery.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
+    }
+
+    const { data, error } = await eventsQuery;
 
     if (error) return { data: null, error: error.message };
 
-    const counts: ActivationKpis = {
-      signup_started: 0,
-      onboarding_completed: 0,
-      cycle_filled: 0,
-      training_filled: 0,
-      session_logged: 0,
+    // Utilise des Sets pour dédupliquer par user_id — une utilisatrice = 1 comptage max
+    const userSets = {
+      onboarding_completed: new Set<string>(),
+      cycle_filled: new Set<string>(),
+      session_logged: new Set<string>(),
     };
 
     for (const row of data ?? []) {
-      const type = row.event_type as keyof ActivationKpis;
-      if (type in counts) counts[type]++;
+      const type = row.event_type as keyof typeof userSets;
+      if (type in userSets) userSets[type].add(row.user_id);
     }
 
-    return { data: counts, error: null };
+    // Programmes créés — source de vérité : table programs (pas les events training_filled)
+    let programsQuery = supabase
+      .from('programs')
+      .select('id, user_id');
+
+    if (excludeUserIds.length > 0) {
+      programsQuery = programsQuery.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
+    }
+
+    const { data: programsData, error: programsError } = await programsQuery;
+    if (programsError) return { data: null, error: programsError.message };
+
+    return {
+      data: {
+        signup_started: totalRegistered,
+        onboarding_completed: userSets.onboarding_completed.size,
+        cycle_filled: userSets.cycle_filled.size,
+        training_filled: (programsData ?? []).length,
+        session_logged: userSets.session_logged.size,
+      },
+      error: null,
+    };
   } catch (err) {
     console.error('[analyticsService] getActivationKpis', err);
     return { data: null, error: 'Erreur lors de la récupération des KPIs.' };
@@ -314,10 +345,18 @@ export async function getRetentionKpis(excludeUserIds: string[] = []): Promise<{
 
     if (err30d) return { data: null, error: err30d.message };
 
-    // Total utilisatrices (via signup_started)
-    const { data: dataTotal, error: errTotal } = await applyExclusion(
-      supabase.from('events').select('user_id').eq('event_type', 'signup_started')
-    );
+    // Total utilisatrices — source de vérité : table profiles (pas les events)
+    let profilesQuery = supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('is_test_user', false)
+      .eq('is_admin', false);
+
+    if (excludeUserIds.length > 0) {
+      profilesQuery = profilesQuery.not('user_id', 'in', `(${excludeUserIds.join(',')})`);
+    }
+
+    const { data: dataTotal, error: errTotal } = await profilesQuery;
 
     if (errTotal) return { data: null, error: errTotal.message };
 
@@ -325,7 +364,7 @@ export async function getRetentionKpis(excludeUserIds: string[] = []): Promise<{
       data: {
         active_7d: new Set((data7d ?? []).map((r) => r.user_id)).size,
         active_30d: new Set((data30d ?? []).map((r) => r.user_id)).size,
-        total_users: new Set((dataTotal ?? []).map((r) => r.user_id)).size,
+        total_users: (dataTotal ?? []).length,
       },
       error: null,
     };
