@@ -174,7 +174,7 @@ export function UtmPage() {
     });
     if (error) { setError(error); return; }
     if (data) {
-      setItems((prev) => [{ ...data, visits: 0, signups: 0, bounces: 0 }, ...prev]);
+      setItems((prev) => [{ ...data, visits: 0, returns: 0, signups: 0, bounces: 0 }, ...prev]);
       setNewItemName('');
       setNewItemType(ITEM_TYPES[0]);
       setNewItemPage('/');
@@ -317,6 +317,7 @@ export function UtmPage() {
                 <h2 style={sectionTitleStyle}>{selectedChannel.name} — statistiques globales</h2>
                 <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                   <StatCard label="Visites" value={channelStats?.visits ?? 0} />
+                  <StatCard label="Retours" value={channelStats?.returns ?? 0} />
                   <StatCard label="Inscriptions" value={channelStats?.signups ?? 0} />
                   <StatCard label="Conversion" value={conversionRate(channelStats?.signups ?? 0, channelStats?.visits ?? 0)} />
                   <StatCard label="Rebond" value={bounceRate(channelStats?.bounces ?? 0, channelStats?.visits ?? 0)} />
@@ -435,6 +436,7 @@ export function UtmPage() {
                           {/* Stats de l'item */}
                           <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                             <span style={statInlineStyle}>👁 {item.visits} visites</span>
+                            <span style={statInlineStyle}>🔁 {item.returns} retours</span>
                             <span style={statInlineStyle}>✍️ {item.signups} inscriptions</span>
                             <span style={statInlineStyle}>📈 {conversionRate(item.signups, item.visits)} conv.</span>
                             <span style={statInlineStyle}>↩ {bounceRate(item.bounces, item.visits)} rebond</span>

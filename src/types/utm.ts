@@ -25,19 +25,21 @@ export interface UtmEvent {
   utm_medium: string | null;
   utm_campaign: string | null;
   utm_content: string | null;
-  event_type: 'visit' | 'signup' | 'bounce';
+  event_type: 'visit' | 'return' | 'signup' | 'bounce';
   user_id: string | null;
   created_at: string;
 }
 
 export interface UtmItemWithStats extends UtmItem {
   visits: number;
+  returns: number;
   signups: number;
   bounces: number;
 }
 
 export interface UtmChannelStats {
   visits: number;
+  returns: number;
   signups: number;
   bounces: number;
 }

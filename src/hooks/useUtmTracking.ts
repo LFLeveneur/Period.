@@ -5,8 +5,12 @@ import { supabase } from '@/lib/supabase';
 
 const STORAGE_KEY = 'utm_params';
 const SESSION_ID_KEY = 'utm_session_id';
-// Clé pour éviter de tracker deux fois la même visite (StrictMode en dev)
-const TRACKED_KEY = 'utm_visit_tracked';
+// Clé qui stocke les campaigns déjà visitées par cet appareil : Set sérialisé en JSON
+const VISITED_CAMPAIGNS_KEY = 'utm_visited_campaigns';
+
+// Set en mémoire — bloque le double-firing de React StrictMode
+// Se réinitialise à chaque chargement de page (contrairement à localStorage)
+const trackedThisLoad = new Set<string>();
 
 /** Récupère ou crée un identifiant de session persistant dans localStorage */
 function getOrCreateSessionId(): string {
@@ -32,8 +36,6 @@ interface UtmParams {
 
 function saveUtmParams(params: UtmParams) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(params));
-  // Réinitialise le flag de tracking à chaque nouveau set de params
-  localStorage.removeItem(TRACKED_KEY);
 }
 
 export function getStoredUtmParams(): UtmParams | null {
@@ -73,16 +75,28 @@ export function useUtmTracking() {
       utm_content: searchParams.get('utm_content'),
     };
 
+    const campaignKey = params.utm_campaign ?? params.utm_source ?? '_';
+
+    // Bloque le double-firing de React StrictMode (en mémoire, réinitialisé à chaque page load)
+    if (trackedThisLoad.has(campaignKey)) return;
+    trackedThisLoad.add(campaignKey);
+
     // Sauvegarde dans localStorage pour persister après navigation / changement d'onglet
     saveUtmParams(params);
-
-    // Évite le double tracking (React StrictMode remonte deux fois en dev)
-    if (localStorage.getItem(TRACKED_KEY)) return;
-    localStorage.setItem(TRACKED_KEY, '1');
 
     async function trackVisit() {
       const item_id = await findItemId(params.utm_campaign);
       const session_id = getOrCreateSessionId();
+
+      // Vérifie si cet appareil a déjà visité cette campaign (première visite vs retour)
+      const visitedRaw = localStorage.getItem(VISITED_CAMPAIGNS_KEY);
+      const visited: string[] = visitedRaw ? (JSON.parse(visitedRaw) as string[]) : [];
+      const isReturn = visited.includes(campaignKey);
+
+      // Marque cette campaign comme visitée pour les prochains retours
+      if (!isReturn) {
+        localStorage.setItem(VISITED_CAMPAIGNS_KEY, JSON.stringify([...visited, campaignKey]));
+      }
 
       const { error } = await supabase.from('utm_events').insert({
         item_id,
@@ -90,15 +104,15 @@ export function useUtmTracking() {
         utm_medium: params.utm_medium,
         utm_campaign: params.utm_campaign,
         utm_content: params.utm_content,
-        event_type: 'visit',
+        event_type: isReturn ? 'return' : 'visit',
         user_id: null,
         session_id,
       });
 
       if (error) {
         console.error('[UTM] Erreur insert visit:', error.message);
-        // Retire le flag pour réessayer au prochain chargement
-        localStorage.removeItem(TRACKED_KEY);
+        // Retire du Set pour réessayer au prochain chargement de page
+        trackedThisLoad.delete(campaignKey);
       }
     }
 

@@ -105,12 +105,12 @@ export async function getItemsWithStats(
   }
 
   // Agrège par item
-  const statsMap: Record<string, { visits: number; signups: number; bounces: number }> = {};
+  const statsMap: Record<string, { visits: number; returns: number; signups: number; bounces: number }> = {};
   for (const item of items) {
-    statsMap[item.id] = { visits: 0, signups: 0, bounces: 0 };
+    statsMap[item.id] = { visits: 0, returns: 0, signups: 0, bounces: 0 };
   }
   for (const ev of events ?? []) {
-    // Résout l'item cible : d'abord item_id, sinon utm_campaign
+    // Résout l'item cible : d'abord item_id, sinon utm_campaign slug
     const targetId = (ev.item_id && itemById[ev.item_id])
       ? ev.item_id
       : (ev.utm_campaign && itemByName[ev.utm_campaign])
@@ -119,6 +119,7 @@ export async function getItemsWithStats(
 
     if (!targetId || !statsMap[targetId]) continue;
     if (ev.event_type === 'visit') statsMap[targetId].visits++;
+    else if (ev.event_type === 'return') statsMap[targetId].returns++;
     else if (ev.event_type === 'signup') statsMap[targetId].signups++;
     else if (ev.event_type === 'bounce') statsMap[targetId].bounces++;
   }
@@ -141,7 +142,7 @@ export async function getChannelStats(
     .eq('channel_id', channelId);
 
   if (itemsError) return { data: null, error: itemsError.message };
-  if (!items || items.length === 0) return { data: { visits: 0, signups: 0, bounces: 0 }, error: null };
+  if (!items || items.length === 0) return { data: { visits: 0, returns: 0, signups: 0, bounces: 0 }, error: null };
 
   const itemIds = items.map((i) => i.id);
   const itemSlugs = items.map((i) => i.slug).filter(Boolean);
@@ -158,9 +159,10 @@ export async function getChannelStats(
 
   if (eventsError) return { data: null, error: eventsError.message };
 
-  const stats = { visits: 0, signups: 0, bounces: 0 };
+  const stats = { visits: 0, returns: 0, signups: 0, bounces: 0 };
   for (const ev of events ?? []) {
     if (ev.event_type === 'visit') stats.visits++;
+    else if (ev.event_type === 'return') stats.returns++;
     else if (ev.event_type === 'signup') stats.signups++;
     else if (ev.event_type === 'bounce') stats.bounces++;
   }
