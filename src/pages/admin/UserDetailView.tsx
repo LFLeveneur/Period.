@@ -235,20 +235,43 @@ export function UserDetailView({ user, onClose }: UserDetailViewProps) {
                       </thead>
                       <tbody>
                         {detail.events.map((ev) => {
-                          const phase = ev.event_type === 'session_logged' ? (ev.metadata as Record<string, unknown>)?.phase as string | undefined : undefined;
-                          const score = ev.event_type === 'nps_submitted' ? (ev.metadata as Record<string, unknown>)?.score as number | undefined : undefined;
+                          const meta = ev.metadata as Record<string, unknown> | null;
+                          const phase = meta?.phase as string | undefined;
+                          const score = meta?.score as number | undefined;
+                          const path = meta?.path as string | undefined;
+
+                          // Construit le contenu de la colonne "Détails"
+                          let detail_content: React.ReactNode = null;
+                          if (ev.event_type === 'page_viewed' && path) {
+                            detail_content = (
+                              <code style={{ fontSize: 'var(--text-xs)', backgroundColor: 'rgba(47,0,87,0.06)', padding: '2px 6px', borderRadius: 'var(--radius-sm)', color: 'var(--color-text)' }}>
+                                {path}
+                              </code>
+                            );
+                          } else if (ev.event_type === 'session_logged' && phase) {
+                            detail_content = (
+                              <span style={{ color: `var(--color-${phase === 'luteal_early' || phase === 'luteal_late' ? 'luteal' : phase})` }}>
+                                Phase : {String(phase)}
+                              </span>
+                            );
+                          } else if (ev.event_type === 'nps_submitted' && score !== undefined) {
+                            detail_content = <span>Score : {score}/10</span>;
+                          } else if (meta && Object.keys(meta).length > 0) {
+                            // Affichage générique pour les autres metadata
+                            detail_content = (
+                              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                                {Object.entries(meta).map(([k, v]) => `${k}: ${String(v)}`).join(' · ')}
+                              </span>
+                            );
+                          }
+
                           return (
                             <tr key={ev.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                               <td style={{ padding: 'var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--color-text)', fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'] }}>
                                 {eventLabel(ev.event_type)}
                               </td>
                               <td style={{ padding: 'var(--space-3)', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-                                {phase && (
-                                  <span style={{ color: `var(--color-${phase === 'luteal_early' || phase === 'luteal_late' ? 'luteal' : phase})` }}>
-                                    Phase: {String(phase)}
-                                  </span>
-                                )}
-                                {score !== undefined && <span>Score: {score}/10</span>}
+                                {detail_content}
                               </td>
                               <td style={{ padding: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>
                                 {fmtDate(ev.created_at)}
