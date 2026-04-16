@@ -398,12 +398,25 @@ export async function getPageViewStats(excludeUserIds: string[] = []): Promise<{
     const { data, error } = await query;
     if (error) return { data: null, error: error.message };
 
-    // Agrège les vues par path côté client
+    // Normalise un path en remplaçant les segments dynamiques (UUID, nombres) par :id
+    const normalizePath = (path: string): string =>
+      path
+        .split('/')
+        .map((segment) =>
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment) ||
+          /^\d+$/.test(segment)
+            ? ':id'
+            : segment
+        )
+        .join('/');
+
+    // Agrège les vues par path normalisé côté client
     const statsMap: Record<string, { views: number; users: Set<string> }> = {};
 
     for (const row of data ?? []) {
-      const path = (row.metadata as Record<string, unknown>)?.path as string | undefined;
-      if (!path) continue;
+      const raw = (row.metadata as Record<string, unknown>)?.path as string | undefined;
+      if (!raw) continue;
+      const path = normalizePath(raw);
       if (!statsMap[path]) statsMap[path] = { views: 0, users: new Set() };
       statsMap[path].views++;
       statsMap[path].users.add(row.user_id);
