@@ -1,6 +1,7 @@
 // Configuration du routeur de l'application
 import { Routes, Route } from 'react-router';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { useUtmTracking } from '@/hooks/useUtmTracking';
 
 // Layouts
 import { PublicLayout } from '@/layouts/PublicLayout';
@@ -32,6 +33,7 @@ import { ProgramEditPage } from '@/pages/programs/ProgramEditPage';
 
 // Pages admin
 import { AnalyticsPage } from '@/pages/admin/AnalyticsPage';
+import { UtmPage } from '@/pages/admin/UtmPage';
 
 // Pages immersives — auth requise, sans bottom nav
 import { ProgramNewPage } from '@/pages/programs/ProgramNewPage';
@@ -40,9 +42,16 @@ import { SessionPreviewPage } from '@/pages/session/SessionPreviewPage';
 import { SessionActivePage } from '@/pages/session/SessionActivePage';
 import { SessionRecapPage } from '@/pages/session/SessionRecapPage';
 
+/** Composant interne pour utiliser useSearchParams à l'intérieur du contexte Router */
+function UtmTracker() {
+  useUtmTracking();
+  return null;
+}
+
 export function AppRouter() {
   return (
     <AuthProvider>
+      <UtmTracker />
       <Routes>
         {/* Routes publiques */}
         <Route element={<PublicLayout />}>
@@ -71,6 +80,7 @@ export function AppRouter() {
           <Route path="/programs/:id" element={<ProgramDetailPage />} />
           <Route path="/programs/:id/edit" element={<ProgramEditPage />} />
           <Route path="/admin/analytics" element={<AnalyticsPage />} />
+          <Route path="/admin" element={<UtmPage />} />
         </Route>
 
         {/* Routes immersives — auth + onboarding requis, sans bottom nav */}

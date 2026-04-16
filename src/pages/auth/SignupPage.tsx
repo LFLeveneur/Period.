@@ -6,6 +6,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import * as authService from '@/services/authService';
 import * as analytics from '@/lib/analytics';
 import { trackEvent } from '@/services/analyticsService';
+import { trackUtmSignup } from '@/hooks/useUtmTracking';
 
 export function SignupPage() {
   const [email, setEmail] = useState('');
@@ -43,6 +44,8 @@ export function SignupPage() {
     // Track l'inscription avec l'userId nouvellement créé
     if (userId) {
       trackEvent('signup_started', undefined, userId);
+      // Track le signup UTM si des paramètres UTM étaient présents à l'arrivée
+      trackUtmSignup(userId);
     }
     analytics.track('auth_user_signed_up', { method: 'email' });
     // Affiche message de confirmation d'email

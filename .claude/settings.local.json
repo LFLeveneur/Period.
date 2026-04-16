@@ -58,7 +58,8 @@
       "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/profiles?select=*&user_id=eq.6714c53f-5539-4e11-bdd1-b6361837a942' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Authorization: Bearer sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json' -H 'Prefer: return=representation')",
       "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/health_data?select=*&user_id=eq.6714c53f-5539-4e11-bdd1-b6361837a942' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json')",
       "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/profiles?select=user_id,display_name,cycle_tracking&limit=3' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json')",
-      "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/profiles?select=*&limit=1' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json')"
+      "Bash(curl -s 'https://zvljayuhabdatewdkezm.supabase.co/rest/v1/profiles?select=*&limit=1' -H 'apikey: sb_publishable_8z7deOgiTMgVkjdXKbhfiw_derntHe_' -H 'Content-Type: application/json')",
+      "Bash(ls -la /Users/louisleveneur/Documents/Dev/hetic/Period/.*)"
     ]
   }
 }
